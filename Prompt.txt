@@ -1,0 +1,267 @@
+Expert Web Developer Prompt: ISELCO-I STAR Ticketing System
+You are an expert full-stack developer specializing in Ionic-Vue 3, Laravel 12, and MySQL. You will help build ISELCO-I STAR (Service Tracking & Assistance Requests), an enterprise-grade cross-platform ticketing system optimized for 400+ mobile users.
+
+?? Project Scope
+Core System
+Purpose: Internal department ticketing system with real-time collaboration, RBAC, and comprehensive workflow tracking.
+Scale: 400+ concurrent mobile users with real-time WebSocket communication.
+
+??? Technical Architecture
+Frontend Stack
+* Framework: Ionic 7+ with Vue 3 (Composition API + TypeScript)
+* State Management: Pinia with persistence
+* Routing: Vue Router with auth guards
+* Real-time: Laravel Echo + Pusher protocol
+* UI Features: 
+o Dark/light theme toggle
+o Skeleton loaders for async operations
+o Pull-to-refresh
+o Infinite scroll for ticket lists
+o Toast notifications
+o Modal-based forms
+Backend Stack
+* Framework: Laravel 12
+* Authentication: Laravel Sanctum (SPA + mobile token auth)
+* Real-time: Laravel Reverb (WebSocket server)
+* Queue System: Redis-backed queues for notifications
+* Storage: Local/S3 for attachments
+* API: RESTful + real-time event broadcasting
+Database Architecture
+* Primary DB: MySQL 8.0+ 
+o Ticket management
+o User/role management
+o Category/priority configuration
+o Chat messages and attachments
+* External DB: MSSQL (Read-only) 
+o Employee synchronization via scheduled commands
+o API integration for user data
+
+
+## ?? Ticket Lifecycle Implementation
+
+### **Status Flow**
+```
+NEW ? SEEN ? ASSIGNED ? IN_PROGRESS ? RESOLVED ? CLOSED
+                ?                          ?
+            (Reopen) ???????????????????????
+Transition Rules
+1. NEW ? SEEN: Auto-triggered when ticket opened by any department user
+2. SEEN ? ASSIGNED: When admin/user accepts ticket or admin assigns
+3. ASSIGNED ? IN_PROGRESS: Fixer clicks "Start Working"
+4. IN_PROGRESS ? RESOLVED: Fixer clicks "Mark Resolved" (requires solution note + optional photo)
+5. RESOLVED ? CLOSED: Creator verifies and approves
+6. RESOLVED ? IN_PROGRESS: Creator rejects and provides feedback
+7. CLOSED ? REOPENED: Creator can reopen within configurable timeframe
+
+
+Timeline Tracking
+Each status change stores:
+* Timestamp
+* User who triggered change
+* Optional notes/reason
+* Display as visual timeline in both mobile and web UI
+
+?? Role-Based Access Control (RBAC)
+Role Hierarchy
+1. Superadmin
+* Full system access
+* Manage all departments, users, roles, permissions
+* View all tickets across departments
+* Configure categories, priorities, system settings
+* Suspend/activate accounts
+* Password reset capabilities
+* Assign department admins
+2. Department Admin
+* Manage users within assigned department(s)
+* View all tickets in their department(s)
+* Assign tickets to department users
+* Approve/reject ticket resolutions
+* Cannot modify system-level settings
+3. User (Default Role)
+* Create tickets
+* View own created tickets
+* View assigned tickets
+* Accept open department tickets
+* Update ticket status when assigned
+* Chat on involved tickets
+4. Custom Roles
+* Superadmin can create custom roles
+* Granular permission assignment
+* Examples: "Viewer Only", "Reporter", "Admin" Can also assigned departments that can be handled by each admin 
+ex etsd manager can supervise ETSD dept only
+FInance manager can supervise ,FINANCE,AUDIT department
+General Manager can supervise All dept 
+
+Permission System
+Implement granular permissions:
+php
+// Examples
+'tickets.create'
+'tickets.view.all' // Cross-department
+'tickets.view.department' // Own department only
+'tickets.assign'
+'tickets.accept'
+'tickets.resolve'
+'tickets.verify'
+'users.manage'
+'categories.manage'
+'reports.view'
+
+?? Mobile-First UI/UX Requirements
+Dashboard Views
+Home Dashboard
+* Stats Cards: Open Tickets, Assigned to Me, Created by Me, Resolved Today
+* Department Filter: Multi-select if user has cross-department access
+* Quick Actions: Create Ticket, Scan QR (future feature)
+Ticket Lists (Tabs)
+1. Open Tickets: Department tickets awaiting assignment
+2. My Assigned: Tickets assigned to current user
+3. My Created: Tickets created by current user
+4. All Tickets: (Permission-based) Searchable, filterable
+Ticket Detail Screen
+* Header: Ticket number, status badge, priority badge
+* Timeline: Visual status progression with timestamps
+* Details Section: Title, description, category, department, assigned to
+* Attachments: Image gallery with lightbox
+* Chat Section: Messenger-like interface (see Chat Requirements)
+* Action Buttons: Context-aware (Accept, Start, Resolve, Verify, Reopen)
+Chat Interface Requirements
+Design like Facebook Messenger:
+* Real-time message updates (WebSocket)
+* Message bubbles (sent vs received styling)
+* Timestamp on hover/long-press
+* Read receipts (checkmarks)
+* Typing indicators
+* Image attachment preview
+* Auto-scroll to latest message
+* "New Messages" divider
+* Pull-to-load older messages
+
+?? Real-Time Notification System
+Notification Triggers
+EventNotify WhoNotification TypeTicket Created (No assignee)All department users + adminsPush + In-appTicket Created (Direct assign)Assigned userPush + In-appTicket AcceptedTicket creatorIn-app + ToastTicket Assigned (by admin)Assigned userPush + In-appStatus ChangedCreator + Assigned userIn-app + ToastNew CommentAll participantsPush + In-appTicket ResolvedTicket creatorPush + In-appTicket Verified/ClosedAssigned userIn-app + ToastTicket ReopenedAssigned userPush + In-appImplementation
+* Laravel Reverb: WebSocket server for real-time events
+* Laravel Echo: Frontend WebSocket client
+* Notification Channels: 
+o Database (in-app notifications)
+o Broadcast (real-time toasts)
+o Push (optional: FCM for mobile)
+* Toast Messages: Non-intrusive, auto-dismiss after 3s
+
+?? Security Requirements
+Authentication
+* Laravel Sanctum SPA authentication
+* Mobile: Token-based (sanctum:auth middleware)
+* Session timeout: 5 min of inactivity (configurable)
+* Forgot password on normal users
+forgot password for normal users will be treated as new “special ticket” for department admin/superadmin only
+the special ticket has a button “reset password” button once clicked will make the user
+admin has user management dashboard and can reset password
+This is a ticket-based password reset system (not automated email):
+User clicks "Forgot Password?" on login page
+Modal appears requesting verification details:
+Username (must exist)
+First Name
+Last Name
+Department
+Mobile Number
+System validates username exists
+Ticket is created with:
+Title: 
+PASSWORD RESET for {username}, {name}, {mobile} [SUPERADMIN ONLY]
+Priority: High
+Category: Account/Access
+Department: IT/department admin
+Status: New
+Department admins are notified via in-app notification
+User sees success message and modal closes
+Admin manually resets password via User Management or reset button in the ticket details password is “1234”
+User logs in with “1234” and is forced to change password (new password must not be “1234”
+
+
+Authorization
+* Middleware: can:permission-name
+* Eloquent policies for tickets, users, categories
+* API key protection for MSSQL sync endpoint
+Data Protection
+* File upload validation (max 25MB, allowed types: jpg, png, pdf, docx)
+* XSS protection (sanitize user inputs)
+* CSRF protection (Sanctum handles this)
+* Rate limiting: 60 requests/minute per user
+
+?? Reporting Module
+Required Reports
+1. Tickets Per Department
+* Filterable by date range
+* Grouping: Department ? Status breakdown
+* Export: PDF, Excel
+2. Tickets Per User
+* Created vs Assigned vs Resolved counts
+* Average resolution time
+* Reopen rate
+3. Time & Motion Analysis
+* Average time in each status
+* Breakdown: NEW?SEEN, SEEN?ASSIGNED, etc.
+* Identify bottlenecks
+4. Category Performance
+* Most requested categories
+* Average resolution time by category
+* Priority distribution
+5. Department Performance
+* Total tickets handled
+* Average response time
+* User contribution metrics
+Report Features
+* Visual charts (Chart.js or ApexCharts)
+* Export to PDF (Dompdf or Snappy)
+* Export to Excel (Laravel Excel)
+* Scheduled email reports (optional)
+
+?? MSSQL Employee Sync
+Sync Strategy
+php
+// Artisan Command: php artisan sync:employees
+// Schedule: Daily at 2:00 AM
+
+1. Connect to MSSQL (read-only credentials)
+2. Fetch employee data (SELECT id, name, email, department)
+3. Upsert to MySQL users table
+4. Log sync results (new, updated, errors)
+5. Send notification to superadmin
+
+
+?? UI/UX Specifications
+Theme System
+* Dark Mode: AMOLED-friendly (#121212 base)
+* Light Mode: Clean white (#FFFFFF base)
+* Primary Color: Customizable (default: #3880ff - Ionic default)
+* Status Colors: 
+o NEW: #6c757d (gray)
+o SEEN: #0dcaf0 (cyan)
+o ASSIGNED: #0d6efd (blue)
+o IN_PROGRESS: #ffc107 (yellow)
+o RESOLVED: #198754 (green)
+o CLOSED: #6c757d (gray)
+o REOPENED: #dc3545 (red)
+Loading States
+* Skeleton screens for ticket lists (ionic-skeleton-text)
+* Spinners for button actions
+* Progressive image loading with placeholders
+Responsive Design
+* Mobile-first approach
+* Tablet: 2-column layout for ticket lists
+* Desktop: 3-column (sidebar, list, detail)
+
+
+
+?? Success Criteria
+* 400+ users can create/manage tickets simultaneously
+* Real-time chat with <500ms latency
+* Mobile app loads in <2 seconds
+* 99.9% uptime SLA
+* Full RBAC with granular permissions
+* Complete ticket lifecycle tracking
+* Comprehensive reporting suite
+* Dark/light mode support
+* Responsive across all devices
+
