@@ -17,7 +17,19 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: () => import('../views/HomePage.vue'),
+    component: () => import('../views/DashboardPage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/tickets',
+    name: 'Tickets',
+    component: () => import('../views/TicketListPage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/change-password',
+    name: 'ChangePassword',
+    component: () => import('../views/ChangePasswordPage.vue'),
     meta: { requiresAuth: true }
   }
 ]

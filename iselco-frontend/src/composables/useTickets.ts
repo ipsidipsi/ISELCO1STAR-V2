@@ -1,0 +1,65 @@
+import { ref, onMounted } from 'vue'
+import { useTicketStore } from '@/stores/tickets'
+
+/**
+ * Tickets Composable
+ * 
+ * Separates ticket management logic from components
+ */
+export function useTickets() {
+    const ticketStore = useTicketStore()
+
+    const loading = ref(false)
+    const error = ref('')
+
+    async function loadTickets(filters = {}) {
+        loading.value = true
+        error.value = ''
+
+        try {
+            await ticketStore.fetchTickets(filters)
+        } catch (err: any) {
+            error.value = err.message || 'Failed to load tickets'
+        } finally {
+            loading.value = false
+        }
+    }
+
+    async function loadStats() {
+        loading.value = true
+        error.value = ''
+
+        try {
+            await ticketStore.fetchStats()
+        } catch (err: any) {
+            error.value = err.message || 'Failed to load statistics'
+        } finally {
+            loading.value = false
+        }
+    }
+
+    async function createTicket(data: any) {
+        loading.value = true
+        error.value = ''
+
+        try {
+            const ticket = await ticketStore.createTicket(data)
+            return ticket
+        } catch (err: any) {
+            error.value = err.message || 'Failed to create ticket'
+            throw err
+        } finally {
+            loading.value = false
+        }
+    }
+
+    return {
+        tickets: ticketStore.tickets,
+        stats: ticketStore.stats,
+        loading,
+        error,
+        loadTickets,
+        loadStats,
+        createTicket,
+    }
+}
