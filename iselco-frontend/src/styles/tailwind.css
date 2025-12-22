@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Ionic overrides for your design */
+:root {
+  --ion-background-color: #F7FAFC;
+  --ion-text-color: #2D3748;
+  
+  /* Sidebar colors */
+  --sidebar-bg: #2D3748;
+  --sidebar-active: #3B82F6;
+  
+  /* Status colors */
+  --status-new: #6B7280;
+  --status-in-progress: #F59E0B;
+  --status-resolved: #10B981;
+  --status-closed: #6B7280;
+}
+
+/* Dark mode */
+body.dark {
+  --ion-background-color: #1A202C;
+  --ion-text-color: #F7FAFC;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #E2E8F0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E0;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A0AEC0;
+}
