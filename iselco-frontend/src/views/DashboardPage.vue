@@ -1,11 +1,11 @@
 <template>
   <ion-page>
-    <!-- Header -->
-    <ion-header class="bg-white shadow-sm">
-      <ion-toolbar class="px-4">
+    <!-- Header with subtle glass effect -->
+    <ion-header class="glass-header">
+      <ion-toolbar class="px-4 bg-transparent">
         <div class="flex items-center justify-between py-2">
           <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 bg-teal rounded-full flex items-center justify-center">
+            <div class="w-10 h-10 bg-gradient-to-br from-teal to-teal-600 rounded-full flex items-center justify-center shadow-lg">
               <ion-icon :icon="ticketOutline" class="text-xl text-white"></ion-icon>
             </div>
             <div>
@@ -14,15 +14,15 @@
             </div>
           </div>
           
-          <ion-button fill="clear" @click="handleLogout">
-            <ion-icon :icon="logOutOutline" class="text-gray-600"></ion-icon>
+          <ion-button fill="clear" @click="handleLogout" class="glass-button">
+            <ion-icon :icon="logOutOutline" class="text-gray-700"></ion-icon>
           </ion-button>
         </div>
       </ion-toolbar>
     </ion-header>
 
-    <!-- Content -->
-    <ion-content :fullscreen="true" class="bg-gray-50">
+    <!-- Content with gradient background -->
+    <ion-content :fullscreen="true" class="gradient-bg">
       <div class="p-4 max-w-7xl mx-auto">
         
         <!-- Loading State -->
@@ -31,89 +31,89 @@
         </div>
 
         <template v-else>
-          <!-- Statistics Cards -->
+          <!-- Statistics Cards with glass effect -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <!-- Total Tickets -->
-            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
+            <div class="glass-card card-blue">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-lg text-gray-600 font-medium">Total Tickets</p>
-                  <p class="text-3xl font-bold text-navy-700 mt-2">{{ stats.total }}</p>
+                  <p class="text-sm text-gray-700 font-medium mb-1">Total Tickets</p>
+                  <p class="text-3xl font-bold text-navy-700">{{ stats.total }}</p>
                 </div>
-                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <div class="icon-glow icon-blue">
                   <ion-icon :icon="documentsOutline" class="text-2xl text-blue-600"></ion-icon>
                 </div>
               </div>
             </div>
 
             <!-- Assigned to Me -->
-            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-teal">
+            <div class="glass-card card-teal">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-sm text-gray-600 font-medium">Assigned to Me</p>
-                  <p class="text-3xl font-bold text-navy-700 mt-2">{{ stats.my_assigned }}</p>
+                  <p class="text-sm text-gray-700 font-medium mb-1">Assigned to Me</p>
+                  <p class="text-3xl font-bold text-navy-700">{{ stats.my_assigned }}</p>
                 </div>
-                <div class="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
+                <div class="icon-glow icon-teal">
                   <ion-icon :icon="personOutline" class="text-2xl text-teal-600"></ion-icon>
                 </div>
               </div>
             </div>
 
             <!-- In Progress -->
-            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-yellow-500">
+            <div class="glass-card card-yellow">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-sm text-gray-600 font-medium">In Progress</p>
-                  <p class="text-3xl font-bold text-navy-700 mt-2">{{ stats.in_progress }}</p>
+                  <p class="text-sm text-gray-700 font-medium mb-1">In Progress</p>
+                  <p class="text-3xl font-bold text-navy-700">{{ stats.in_progress }}</p>
                 </div>
-                <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                <div class="icon-glow icon-yellow">
                   <ion-icon :icon="timeOutline" class="text-2xl text-yellow-600"></ion-icon>
                 </div>
               </div>
             </div>
 
             <!-- Resolved -->
-            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500">
+            <div class="glass-card card-green">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-sm text-gray-600 font-medium">Resolved</p>
-                  <p class="text-3xl font-bold text-navy-700 mt-2">{{ stats.resolved }}</p>
+                  <p class="text-sm text-gray-700 font-medium mb-1">Resolved</p>
+                  <p class="text-3xl font-bold text-navy-700">{{ stats.resolved }}</p>
                 </div>
-                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <div class="icon-glow icon-green">
                   <ion-icon :icon="checkmarkCircleOutline" class="text-2xl text-green-600"></ion-icon>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Quick Actions -->
-          <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <!-- Quick Actions with glass effect -->
+          <div class="glass-card mb-6">
             <h2 class="text-lg font-semibold text-navy-700 mb-4">Quick Actions</h2>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <button class="flex flex-col items-center p-4 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors">
-                <ion-icon :icon="addCircleOutline" class="text-3xl text-teal mb-2"></ion-icon>
-                <span class="text-sm font-medium text-navy-700">New Ticket</span>
+              <button @click="openCreateTicket" class="action-button action-teal">
+                <ion-icon :icon="addCircleOutline" class="text-3xl mb-2"></ion-icon>
+                <span class="text-sm font-medium">New Ticket</span>
               </button>
               
-              <button class="flex flex-col items-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-                <ion-icon :icon="listOutline" class="text-3xl text-blue-600 mb-2"></ion-icon>
-                <span class="text-sm font-medium text-navy-700">View All</span>
+              <button @click="goToTickets" class="action-button action-blue">
+                <ion-icon :icon="listOutline" class="text-3xl mb-2"></ion-icon>
+                <span class="text-sm font-medium">View All</span>
               </button>
               
-              <button class="flex flex-col items-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
-                <ion-icon :icon="statsChartOutline" class="text-3xl text-purple-600 mb-2"></ion-icon>
-                <span class="text-sm font-medium text-navy-700">Reports</span>
+              <button @click="goToReports" class="action-button action-purple">
+                <ion-icon :icon="statsChartOutline" class="text-3xl mb-2"></ion-icon>
+                <span class="text-sm font-medium">Reports</span>
               </button>
               
-              <button class="flex flex-col items-center p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
-                <ion-icon :icon="settingsOutline" class="text-3xl text-gray-600 mb-2"></ion-icon>
-                <span class="text-sm font-medium text-navy-700">Settings</span>
+              <button @click="goToSettings" class="action-button action-gray">
+                <ion-icon :icon="settingsOutline" class="text-3xl mb-2"></ion-icon>
+                <span class="text-sm font-medium">Settings</span>
               </button>
             </div>
           </div>
 
           <!-- Recent Activity -->
-          <div class="bg-white rounded-xl shadow-sm p-6">
+          <div class="glass-card">
             <h2 class="text-lg font-semibold text-navy-700 mb-4">Recent Tickets</h2>
             
             <div v-if="tickets.length === 0" class="text-center py-8 text-gray-500">
@@ -124,11 +124,11 @@
               <div 
                 v-for="ticket in tickets.slice(0, 5)" 
                 :key="ticket.id"
-                class="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                class="ticket-item"
               >
                 <div class="flex-1">
                   <div class="flex items-center space-x-2">
-                    <span class="text-sm font-mono text-gray-600">{{ ticket.ticket_number }}</span>
+                    <span class="text-sm font-mono font-semibold text-teal-600">{{ ticket.ticket_number }}</span>
                     <span 
                       class="px-2 py-1 text-xs font-medium rounded-full"
                       :class="getStatusClass(ticket.status)"
@@ -203,3 +203,168 @@ function formatDate(date: string) {
   })
 }
 </script>
+
+<style scoped>
+/* Gradient Background */
+.gradient-bg {
+  --background: linear-gradient(135deg, #f5f7fa 0%, #e6eef5 100%);
+}
+
+/* Glass Header */
+.glass-header {
+  --background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Glass Cards - Subtle Effect */
+.glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.25);
+}
+
+/* Stat Card Gradients */
+.card-blue {
+  border-left: 4px solid #3B82F6;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(255, 255, 255, 0.75) 100%);
+}
+
+.card-teal {
+  border-left: 4px solid #14B8A6;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, rgba(255, 255, 255, 0.75) 100%);
+}
+
+.card-yellow {
+  border-left: 4px solid #F59E0B;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(255, 255, 255, 0.75) 100%);
+}
+
+.card-green {
+  border-left: 4px solid #10B981;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(255, 255, 255, 0.75) 100%);
+}
+
+/* Icon Glow Effect */
+.icon-glow {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+}
+
+.icon-blue {
+  background: rgba(59, 130, 246, 0.15);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.icon-teal {
+  background: rgba(20, 184, 166, 0.15);
+  box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);
+}
+
+.icon-yellow {
+  background: rgba(245, 158, 11, 0.15);
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+.icon-green {
+  background: rgba(16, 185, 129, 0.15);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.icon-glow:hover {
+  transform: scale(1.1);
+}
+
+/* Action Buttons */
+.action-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.action-teal {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.2) 0%, rgba(20, 184, 166, 0.05) 100%);
+  color: #0D9488;
+}
+
+.action-blue {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.05) 100%);
+  color: #2563EB;
+}
+
+.action-purple {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.2) 0%, rgba(147, 51, 234, 0.05) 100%);
+  color: #7C3AED;
+}
+
+.action-gray {
+  background: linear-gradient(135deg, rgba(107, 114, 128, 0.2) 0%, rgba(107, 114, 128, 0.05) 100%);
+  color: #4B5563;
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Ticket Items */
+.ticket-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: rgba(249, 250, 251, 0.5);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.ticket-item:hover {
+  background: rgba(243, 244, 246, 0.8);
+  transform: translateX(4px);
+}
+
+/* Glass Button */
+.glass-button {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border-radius: 0.5rem;
+}
+
+/* Fallback for browsers without backdrop-filter */
+@supports not (backdrop-filter: blur(10px)) {
+  .glass-card,
+  .glass-header {
+    background: rgba(255, 255, 255, 0.95);
+  }
+}
+</style>

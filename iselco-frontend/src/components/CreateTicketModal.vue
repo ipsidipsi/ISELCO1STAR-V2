@@ -1,0 +1,272 @@
+<template>
+  <ion-modal :is-open="isOpen" @didDismiss="closeModal">
+    <ion-header>
+      <ion-toolbar class="px-4">
+        <ion-title class="text-xl font-bold text-navy-700">Create New Ticket</ion-title>
+        <ion-buttons slot="end">
+          <ion-button @click="closeModal">
+            <ion-icon :icon="closeOutline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="ion-padding">
+      <form @submit.prevent="handleSubmit" class="space-y-4">
+        
+        <!-- Title -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Title <span class="text-red-500">*</span>
+          </label>
+          <ion-input
+            v-model="form.title"
+            placeholder="Brief description of the issue"
+            class="custom-input"
+            :class="{ 'border-red-500': errors.title }"
+          ></ion-input>
+          <p v-if="errors.title" class="text-red-500 text-sm mt-1">{{ errors.title }}</p>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Description <span class="text-red-500">*</span>
+          </label>
+          <ion-textarea
+            v-model="form.description"
+            placeholder="Detailed description of the issue..."
+            :rows="4"
+            class="custom-input"
+            :class="{ 'border-red-500': errors.description }"
+          ></ion-textarea>
+          <p v-if="errors.description" class="text-red-500 text-sm mt-1">{{ errors.description }}</p>
+        </div>
+
+        <!-- Department -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Department <span class="text-red-500">*</span>
+          </label>
+          <select
+            v-model="form.department_id"
+            @change="handleDepartmentChange"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-transparent"
+            :class="{ 'border-red-500': errors.department_id }"
+          >
+            <option value="">Select department</option>
+            <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+              {{ dept.name }}
+            </option>
+          </select>
+          <p v-if="errors.department_id" class="text-red-500 text-sm mt-1">{{ errors.department_id }}</p>
+        </div>
+
+        <!-- Category -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Category <span class="text-red-500">*</span>
+          </label>
+          <select
+            v-model="form.category_id"
+            :disabled="!form.department_id"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-transparent disabled:opacity-50"
+            :class="{ 'border-red-500': errors.category_id }"
+          >
+            <option value="">Select category</option>
+            <option v-for="cat in filteredCategories" :key="cat.id" :value="cat.id">
+              {{ cat.name }}
+            </option>
+          </select>
+          <p v-if="errors.category_id" class="text-red-500 text-sm mt-1">{{ errors.category_id }}</p>
+        </div>
+
+        <!-- Priority -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Priority <span class="text-red-500">*</span>
+          </label>
+          <select
+            v-model="form.priority_id"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-transparent"
+            :class="{ 'border-red-500': errors.priority_id }"
+          >
+            <option value="">Select priority</option>
+            <option v-for="priority in priorities" :key="priority.id" :value="priority.id">
+              {{ priority.name }} ({{ priority.sla_hours }}h SLA)
+            </option>
+          </select>
+          <p v-if="errors.priority_id" class="text-red-500 text-sm mt-1">{{ errors.priority_id }}</p>
+        </div>
+
+        <!-- Error Message -->
+        <div v-if="errorMessage" class="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p class="text-red-700 text-sm">{{ errorMessage }}</p>
+        </div>
+
+        <!-- Success Message -->
+        <div v-if="successMessage" class="p-3 bg-green-50 border border-green-200 rounded-lg">
+          <p class="text-green-700 text-sm">{{ successMessage }}</p>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex space-x-3 pt-4">
+          <button
+            type="button"
+            @click="closeModal"
+            class="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            :disabled="loading"
+            class="flex-1 px-6 py-3 bg-teal hover:bg-teal-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+          >
+            <span v-if="!loading">Create Ticket</span>
+            <ion-spinner v-else name="crescent" class="w-5 h-5"></ion-spinner>
+          </button>
+        </div>
+      </form>
+    </ion-content>
+  </ion-modal>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from 'vue'
+import {
+  IonModal, IonHeader, IonToolbar, IonTitle, IonContent,
+  IonButtons, IonButton, IonIcon, IonInput, IonTextarea, IonSpinner
+} from '@ionic/vue'
+import { closeOutline } from 'ionicons/icons'
+import { useMetadataStore } from '@/stores/metadata'
+import { useTickets } from '@/composables/useTickets'
+
+const props = defineProps<{
+  isOpen: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'created'): void
+}>()
+
+const metadataStore = useMetadataStore()
+const { createTicket } = useTickets()
+
+const form = ref({
+  title: '',
+  description: '',
+  department_id: '',
+  category_id: '',
+  priority_id: '',
+})
+
+const errors = ref<Record<string, string>>({})
+const loading = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
+
+const departments = computed(() => metadataStore.departments)
+const categories = computed(() => metadataStore.categories)
+const priorities = computed(() => metadataStore.priorities)
+
+const filteredCategories = computed(() => {
+  if (!form.value.department_id) return []
+  return categories.value.filter(
+    cat => cat.department_id === Number(form.value.department_id) || cat.department_id === null
+  )
+})
+
+onMounted(async () => {
+  if (departments.value.length === 0) {
+    await metadataStore.fetchAllMetadata()
+  }
+})
+
+watch(() => props.isOpen, (newVal) => {
+  if (newVal) {
+    resetForm()
+  }
+})
+
+function handleDepartmentChange() {
+  form.value.category_id = ''
+}
+
+function validateForm() {
+  errors.value = {}
+  
+  if (!form.value.title) errors.value.title = 'Title is required'
+  if (!form.value.description) errors.value.description = 'Description is required'
+  if (!form.value.department_id) errors.value.department_id = 'Department is required'
+  if (!form.value.category_id) errors.value.category_id = 'Category is required'
+  if (!form.value.priority_id) errors.value.priority_id = 'Priority is required'
+  
+  return Object.keys(errors.value).length === 0
+}
+
+async function handleSubmit() {
+  if (!validateForm()) return
+  
+  loading.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
+  
+  try {
+    await createTicket({
+      title: form.value.title,
+      description: form.value.description,
+      department_id: Number(form.value.department_id),
+      category_id: Number(form.value.category_id),
+      priority_id: Number(form.value.priority_id),
+    })
+    
+    successMessage.value = 'Ticket created successfully!'
+    
+    setTimeout(() => {
+      emit('created')
+      closeModal()
+    }, 1000)
+  } catch (error: any) {
+    errorMessage.value = error.message || 'Failed to create ticket'
+  } finally {
+    loading.value = false
+  }
+}
+
+function resetForm() {
+  form.value = {
+    title: '',
+    description: '',
+    department_id: '',
+    category_id: '',
+    priority_id: '',
+  }
+  errors.value = {}
+  errorMessage.value = ''
+  successMessage.value = ''
+}
+
+function closeModal() {
+  emit('close')
+}
+</script>
+
+<style scoped>
+.custom-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 0.5rem;
+  --background: white;
+  --padding-start: 0;
+  --padding-end: 0;
+}
+
+.custom-input:focus {
+  border-color: #14B8A6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+}
+</style>
