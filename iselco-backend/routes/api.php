@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\MetadataController;
+use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +42,9 @@ Route::middleware('auth:sanctum')->group(function () {
     //------------------------------------------------------------
     Route::apiResource('tickets', TicketController::class);
     
+    // Tickets - Special endpoints
+    Route::get('/tickets/assigned-to-me', [TicketController::class, 'assignedToMe']);
+    
     // Tickets - Lifecycle methods
     Route::post('/tickets/{id}/accept', [TicketController::class, 'accept']);
     Route::post('/tickets/{id}/start', [TicketController::class, 'start']);
@@ -66,11 +70,35 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/attachments/{id}', [AttachmentController::class, 'destroy']);
     
     //------------------------------------------------------------
+    // Roles & Permissions Management
+    //------------------------------------------------------------
+    Route::apiResource('roles', RoleController::class);
+    Route::get('/roles/permissions/all', [RoleController::class, 'getPermissions']);
+    
+    //------------------------------------------------------------
     // Users - CRUD
     //------------------------------------------------------------
     Route::apiResource('users', UserController::class);
     
-    // Users - Management methods
+    // Users - Role Management
+    Route::post('/users/{id}/assign-roles', [UserController::class, 'assignRoles']);
+    Route::post('/users/{id}/assign-temporary-role', [UserController::class, 'assignTemporaryRole']);
+    Route::get('/users/{id}/temporary-roles', [UserController::class, 'getTemporaryRoles']);
+    Route::delete('/users/{id}/temporary-roles/{roleId}', [UserController::class, 'revokeTemporaryRole']);
+    
+    // Users - Department Management
+    Route::post('/users/{id}/assign-departments', [UserController::class, 'assignDepartments']);
+    Route::get('/users/{id}/department-assignments', [UserController::class, 'getDepartmentAssignments']);
+    
+    // Users - Account Management
     Route::post('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
     Route::patch('/users/{id}/toggle-active', [UserController::class, 'toggleActive']);
+    
+    // Users - Status Management
+    Route::post('/users/{id}/suspend', [UserController::class, 'suspend']);
+    Route::post('/users/{id}/mark-on-leave', [UserController::class, 'markOnLeave']);
+    Route::post('/users/{id}/retire', [UserController::class, 'retire']);
+    Route::post('/users/{id}/terminate', [UserController::class, 'terminate']);
+    Route::post('/users/{id}/reactivate', [UserController::class, 'reactivate']);
+    Route::get('/users/{id}/status-history', [UserController::class, 'getStatusHistory']);
 });

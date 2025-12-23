@@ -21,17 +21,38 @@ class TicketController extends Controller
      * List tickets with filtering
      * 
      * GET /api/tickets?status=new&department_id=1&assigned_to=5
+     * 
+     * Automatic role-based filtering:
+     * - Normal users: Only tickets they created OR are assigned to
+     * - Department admins: Only tickets in their assigned departments
+     * - Superadmin: All tickets
      */
     public function index(Request $request)
     {
+        $user = $request->user();
         $query = Ticket::with(['priority', 'category', 'department', 'requestor', 'assignedTo']);
+
+        // Apply role-based filtering
+        if (!$user->isSuperadmin()) {
+            if ($user->isDepartmentAdmin()) {
+                // Department admin: filter by accessible departments
+                $accessibleDepartmentIds = $user->getAccessibleDepartmentIds();
+                $query->whereIn('department_id', $accessibleDepartmentIds);
+            } else {
+                // Normal user: only tickets they created or are assigned to
+                $query->where(function ($q) use ($user) {
+                    $q->where('requestor_id', $user->id)
+                      ->orWhere('assigned_to_id', $user->id);
+                });
+            }
+        }
 
         // Filter by status
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
 
-        // Filter by department
+        // Filter by department (only if superadmin or dept admin accessing their own departments)
         if ($request->has('department_id')) {
             $query->where('department_id', $request->department_id);
         }
@@ -57,18 +78,11 @@ class TicketController extends Controller
         // Sort
         $query->orderBy('created_at', 'desc');
 
-        // Debug logging
-        \Log::info('Tickets query count: ' . $query->count());
-        \Log::info('All param: ' . $request->input('all'));
-        \Log::info('Has all param: ' . ($request->has('all') ? 'yes' : 'no'));
-
         // Paginate or get all
         if ($request->has('all') && $request->input('all') === 'true') {
             $tickets = $query->get();
-            \Log::info('Returning all tickets: ' . $tickets->count());
         } else {
             $tickets = $query->paginate($request->input('per_page', 20));
-            \Log::info('Returning paginated tickets');
         }
 
         return response()->json($tickets);
@@ -436,5 +450,24 @@ class TicketController extends Controller
             DB::rollBack();
             return response()->json(['error' => 'Failed to reopen ticket'], 500);
         }
+    }
+
+    /**
+     * Get tickets assigned to the current user
+     * 
+     * GET /api/tickets/assigned-to-me
+     * 
+     * For "Assigned to Me" dashboard section
+     */
+    public function assignedToMe(Request $request)
+    {
+        $user = $request->user();
+        
+        $tickets = Ticket::with(['priority', 'category', 'department', 'requestor'])
+            ->where('assigned_to_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($tickets);
     }
 }

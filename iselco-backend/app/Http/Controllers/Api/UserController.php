@@ -165,6 +165,7 @@ class UserController extends Controller
         return response()->json(['message' => "User {$status} successfully", 'user' => $user]);
     }
 
+
     /**
      * Delete user (soft delete)
      * 
@@ -182,5 +183,335 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'User deleted successfully']);
+    }
+
+    /**
+     * Assign roles to a user (permanent)
+     * 
+     * POST /api/users/{id}/assign-roles
+     * Body: { role_ids: [1, 2, 3] }
+     */
+    public function assignRoles(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'role_ids' => 'required|array',
+            'role_ids.*' => 'exists:roles,id',
+        ]);
+
+        $user->roles()->sync($request->role_ids);
+        $user->load('roles');
+
+        return response()->json([
+            'message' => 'Roles assigned successfully',
+            'user' => $user
+        ]);
+    }
+
+    /**
+     * Assign temporary role to a user (Officer in Charge)
+     * 
+     * POST /api/users/{id}/assign-temporary-role
+     * Body: { role_id, expires_at, reason }
+     */
+    public function assignTemporaryRole(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'role_id' => 'required|exists:roles,id',
+            'expires_at' => 'required|date|after:now',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        // Check if temporary assignment already exists
+        $existing = \DB::table('role_user_temporary')
+            ->where('user_id', $user->id)
+            ->where('role_id', $request->role_id)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'error' => 'User already has this temporary role assigned'
+            ], 400);
+        }
+
+        // Create temporary role assignment
+        \DB::table('role_user_temporary')->insert([
+            'user_id' => $user->id,
+            'role_id' => $request->role_id,
+            'assigned_by_user_id' => auth()->id(),
+            'expires_at' => $request->expires_at,
+            'reason' => $request->reason,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Temporary role assigned successfully',
+            'expires_at' => $request->expires_at
+        ]);
+    }
+
+    /**
+     * Get user's active temporary roles
+     * 
+     * GET /api/users/{id}/temporary-roles
+     */
+    public function getTemporaryRoles($id)
+    {
+        $temporaryRoles = \DB::table('role_user_temporary')
+            ->join('roles', 'role_user_temporary.role_id', '=', 'roles.id')
+            ->join('users as assigners', 'role_user_temporary.assigned_by_user_id', '=', 'assigners.id')
+            ->where('role_user_temporary.user_id', $id)
+            ->where('role_user_temporary.expires_at', '>', now())
+            ->select(
+                'role_user_temporary.id',
+                'roles.name as role_name',
+                'roles.slug as role_slug',
+                'role_user_temporary.expires_at',
+                'role_user_temporary.reason',
+                'assigners.employee_name as assigned_by',
+                'role_user_temporary.created_at'
+            )
+            ->get();
+
+        return response()->json($temporaryRoles);
+    }
+
+    /**
+     * Revoke temporary role before expiry
+     * 
+     * DELETE /api/users/{id}/temporary-roles/{roleId}
+     */
+    public function revokeTemporaryRole($id, $roleId)
+    {
+        $deleted = \DB::table('role_user_temporary')
+            ->where('user_id', $id)
+            ->where('role_id', $roleId)
+            ->where('expires_at', '>', now())
+            ->delete();
+
+        if ($deleted) {
+            return response()->json(['message' => 'Temporary role revoked successfully']);
+        }
+
+        return response()->json(['error' => 'Temporary role assignment not found'], 404);
+    }
+
+    /**
+     * Assign user to departments (with optional expiry for temporary assignments)
+     * 
+     * POST /api/users/{id}/assign-departments
+     * Body: { 
+     *   departments: [
+     *     { department_id: 1, is_supervisor: true, expires_at: null, reason: null },
+     *     { department_id: 2, is_supervisor: false, expires_at: '2025-01-15', reason: 'Temporary coverage' }
+     *   ]
+     * }
+     */
+    public function assignDepartments(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'departments' => 'required|array',
+            'departments.*.department_id' => 'required|exists:departments,id',
+            'departments.*.is_supervisor' => 'boolean',
+            'departments.*.expires_at' => 'nullable|date|after:now',
+            'departments.*.reason' => 'nullable|string|max:500',
+        ]);
+
+        // Clear existing department assignments
+        $user->departments()->detach();
+
+        // Assign departments
+        foreach ($request->departments as $dept) {
+            $user->departments()->attach($dept['department_id'], [
+                'is_supervisor' => $dept['is_supervisor'] ?? false,
+                'expires_at' => $dept['expires_at'] ?? null,
+                'assigned_by_user_id' => auth()->id(),
+                'reason' => $dept['reason'] ?? null,
+            ]);
+        }
+
+        $user->load('departments');
+
+        return response()->json([
+            'message' => 'Departments assigned successfully',
+            'user' => $user
+        ]);
+    }
+
+    /**
+     * Get user's department assignments with expiry info
+     * 
+     * GET /api/users/{id}/department-assignments
+     */
+    public function getDepartmentAssignments($id)
+    {
+        $assignments = \DB::table('department_user')
+            ->join('departments', 'department_user.department_id', '=', 'departments.id')
+            ->leftJoin('users as assigners', 'department_user.assigned_by_user_id', '=', 'assigners.id')
+            ->where('department_user.user_id', $id)
+            ->select(
+                'departments.id as department_id',
+                'departments.name as department_name',
+                'department_user.is_supervisor',
+                'department_user.expires_at',
+                'department_user.reason',
+                'assigners.employee_name as assigned_by',
+                'department_user.created_at'
+            )
+            ->get();
+
+        return response()->json($assignments);
+    }
+
+    /**
+     * Suspend user account
+     * 
+     * POST /api/users/{id}/suspend
+     * Body: { reason? }
+     */
+    public function suspend(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $user->suspend($request->reason, auth()->id());
+
+        return response()->json([
+            'message' => 'User suspended successfully',
+            'user' => $user
+        ]);
+    }
+
+    /**
+     * Mark user as on leave
+     * 
+     * POST /api/users/{id}/mark-on-leave
+     * Body: { reason? }
+     */
+    public function markOnLeave(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $user->markOnLeave($request->reason, auth()->id());
+
+        return response()->json([
+            'message' => 'User marked as on leave',
+            'user' => $user
+        ]);
+    }
+
+    /**
+     * Retire user (soft delete)
+     * 
+     * POST /api/users/{id}/retire
+     * Body: { reason? }
+     */
+    public function retire(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        // Prevent retiring yourself
+        if ($user->id === auth()->id()) {
+            return response()->json(['error' => 'Cannot retire your own account'], 400);
+        }
+
+        $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $user->retire($request->reason, auth()->id());
+
+        return response()->json([
+            'message' => 'User retired successfully. Account has been soft deleted.',
+            'user' => $user
+        ]);
+    }
+
+    /**
+     * Terminate user employment (soft delete)
+     * 
+     * POST /api/users/{id}/terminate
+     * Body: { reason }
+     */
+    public function terminate(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        // Prevent terminating yourself
+        if ($user->id === auth()->id()) {
+            return response()->json(['error' => 'Cannot terminate your own account'], 400);
+        }
+
+        $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $user->terminate($request->reason, auth()->id());
+
+        return response()->json([
+            'message' => 'User terminated successfully. Account has been soft deleted.',
+            'user' => $user
+        ]);
+    }
+
+    /**
+     * Reactivate user account
+     * 
+     * POST /api/users/{id}/reactivate
+     * Body: { reason? }
+     */
+    public function reactivate(Request $request, $id)
+    {
+        // Include soft deleted users in search
+        $user = User::withTrashed()->findOrFail($id);
+
+        $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $user->reactivate($request->reason, auth()->id());
+
+        return response()->json([
+            'message' => 'User reactivated successfully',
+            'user' => $user
+        ]);
+    }
+
+    /**
+     * Get user status history
+     * 
+     * GET /api/users/{id}/status-history
+     */
+    public function getStatusHistory($id)
+    {
+        // This would require an audit log table
+        // For now, return current status info
+        $user = User::withTrashed()->findOrFail($id);
+
+        return response()->json([
+            'current_status' => $user->status,
+            'status_reason' => $user->status_reason,
+            'status_changed_at' => $user->status_changed_at,
+            'status_changed_by' => $user->statusChangedBy ? [
+                'id' => $user->statusChangedBy->id,
+                'name' => $user->statusChangedBy->employee_name
+            ] : null,
+            'is_soft_deleted' => $user->trashed(),
+            'deleted_at' => $user->deleted_at
+        ]);
     }
 }
