@@ -124,7 +124,8 @@
               <div 
                 v-for="ticket in tickets.slice(0, 5)" 
                 :key="ticket.id"
-                class="ticket-item"
+                class="ticket-item cursor-pointer"
+                @click="goToTicketDetail(ticket.id)"
               >
                 <div class="flex-1">
                   <div class="flex items-center space-x-2">
@@ -206,6 +207,10 @@ async function handleTicketCreated() {
 
 function goToTickets() {
   router.push('/tickets')
+}
+
+function goToTicketDetail(id: number) {
+  router.push(`/tickets/${id}`)
 }
 
 function goToReports() {

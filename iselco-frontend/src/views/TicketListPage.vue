@@ -75,52 +75,52 @@
             v-for="ticket in tickets"
             :key="ticket.id"
             @click="viewTicket(ticket.id)"
-            class="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow cursor-pointer"
+            class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg hover:border-2 hover:border-teal transition-all cursor-pointer"
           >
             <!-- Header -->
             <div class="flex items-start justify-between mb-3">
               <div class="flex-1">
-                <div class="flex items-center space-x-2 mb-2">
-                  <span class="text-sm font-mono font-semibold text-teal">
+                <div class="flex items-center flex-wrap gap-2 mb-3">
+                  <span class="text-base font-mono font-bold text-navy-700">
                     {{ ticket.ticket_number }}
                   </span>
                   <span 
-                    class="px-3 py-1 text-xs font-semibold rounded-full"
+                    class="px-3 py-1.5 text-xs font-bold uppercase tracking-wide rounded-full"
                     :class="getStatusClass(ticket.status)"
                   >
                     {{ formatStatus(ticket.status) }}
                   </span>
                   <span 
                     v-if="ticket.priority"
-                    class="px-3 py-1 text-xs font-semibold rounded-full"
+                    class="px-3 py-1.5 text-xs font-bold uppercase tracking-wide rounded-full"
                     :class="getPriorityClass(ticket.priority.level)"
                   >
                     {{ ticket.priority.name }}
                   </span>
                 </div>
-                <h3 class="text-lg font-semibold text-navy-700 mb-2">
+                <h3 class="text-xl font-bold text-navy-700 mb-2 leading-snug">
                   {{ ticket.title }}
                 </h3>
-                <p class="text-sm text-gray-600 line-clamp-2">
+                <p class="text-base text-gray-700 leading-relaxed line-clamp-2">
                   {{ ticket.description }}
                 </p>
               </div>
-              <ion-icon :icon="chevronForwardOutline" class="text-gray-400 text-xl ml-4"></ion-icon>
+              <ion-icon :icon="chevronForwardOutline" class="text-teal text-2xl ml-4"></ion-icon>
             </div>
 
             <!-- Footer -->
-            <div class="flex items-center justify-between text-xs text-gray-500 mt-4 pt-4 border-t border-gray-100">
-              <div class="flex items-center space-x-4">
-                <span>
-                  <ion-icon :icon="personOutline" class="align-middle"></ion-icon>
+            <div class="flex items-center justify-between text-sm text-gray-600 mt-4 pt-4 border-t border-gray-200">
+              <div class="flex items-center gap-4">
+                <span class="font-medium">
+                  <ion-icon :icon="personOutline" class="align-middle text-base"></ion-icon>
                   {{ ticket.requestor?.employee_name || 'Unknown' }}
                 </span>
-                <span v-if="ticket.department">
-                  <ion-icon :icon="businessOutline" class="align-middle"></ion-icon>
+                <span v-if="ticket.department" class="font-medium">
+                  <ion-icon :icon="businessOutline" class="align-middle text-base"></ion-icon>
                   {{ ticket.department.name }}
                 </span>
               </div>
-              <span>{{ formatDate(ticket.created_at) }}</span>
+              <span class="font-semibold">{{ formatDate(ticket.created_at) }}</span>
             </div>
           </div>
         </div>
@@ -174,8 +174,7 @@ function createTicket() {
 }
 
 function viewTicket(id: number) {
-  // TODO: Navigate to ticket detail
-  console.log('View ticket:', id)
+  router.push(`/tickets/${id}`)
 }
 
 async function handleSearch() {
@@ -191,12 +190,12 @@ async function handleFilter() {
 
 function getStatusClass(status: string) {
   const classes: Record<string, string> = {
-    'new': 'bg-gray-200 text-gray-700',
-    'assigned': 'bg-blue-100 text-blue-700',
+    'new': 'bg-blue-100 text-blue-700',
+    'assigned': 'bg-cyan-100 text-cyan-700',
     'in_progress': 'bg-yellow-100 text-yellow-700',
-    'resolved': 'bg-green-100 text-green-700',
-    'closed': 'bg-gray-300 text-gray-800',
-    'reopened': 'bg-red-100 text-red-700',
+    'resolved': 'bg-purple-100 text-purple-700',
+    'closed': 'bg-green-100 text-green-700',
+    'reopened': 'bg-orange-100 text-orange-700',
   }
   return classes[status] || 'bg-gray-100 text-gray-700'
 }
