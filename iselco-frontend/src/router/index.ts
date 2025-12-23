@@ -43,6 +43,12 @@ const routes: Array<RouteRecordRaw> = [
     name: 'ChangePassword',
     component: () => import('../views/ChangePasswordPage.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/users',
+    name: 'UserManagement',
+    component: () => import('../views/UserManagementPage.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

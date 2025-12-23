@@ -38,12 +38,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/priorities', [MetadataController::class, 'priorities']);
     
     //------------------------------------------------------------
+    // Tickets - Special endpoints (MUST come before apiResource)
+    //------------------------------------------------------------
+    Route::get('/tickets/assigned-to-me', [TicketController::class, 'assignedToMe']);
+    
+    //------------------------------------------------------------
     // Tickets - CRUD
     //------------------------------------------------------------
     Route::apiResource('tickets', TicketController::class);
-    
-    // Tickets - Special endpoints
-    Route::get('/tickets/assigned-to-me', [TicketController::class, 'assignedToMe']);
     
     // Tickets - Lifecycle methods
     Route::post('/tickets/{id}/accept', [TicketController::class, 'accept']);

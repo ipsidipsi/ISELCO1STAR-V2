@@ -100,9 +100,10 @@
                 <span class="text-sm font-medium">View All</span>
               </button>
               
-              <button @click="goToReports" class="action-button action-purple">
-                <ion-icon :icon="statsChartOutline" class="text-3xl mb-2"></ion-icon>
-                <span class="text-sm font-medium">Reports</span>
+              <!-- Users Management - Only for admins -->
+              <button v-if="isAdmin" @click="goToUsers" class="action-button action-purple">
+                <ion-icon :icon="peopleOutline" class="text-3xl mb-2"></ion-icon>
+                <span class="text-sm font-medium">Users</span>
               </button>
               
               <button @click="goToSettings" class="action-button action-gray">
@@ -169,7 +170,7 @@ import {
 import {
   ticketOutline, logOutOutline, documentsOutline, personOutline,
   timeOutline, checkmarkCircleOutline, addCircleOutline, listOutline,
-  statsChartOutline, settingsOutline, chevronForwardOutline
+  statsChartOutline, settingsOutline, chevronForwardOutline, peopleOutline
 } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 import { useTickets } from '@/composables/useTickets'
@@ -181,6 +182,14 @@ const { stats, tickets, loading, loadStats, loadTickets } = useTickets()
 
 const user = computed(() => authStore.user)
 const showCreateModal = ref(false)
+
+// Check if user is admin (superadmin or department_admin)
+const isAdmin = computed(() => {
+  const userRoles = authStore.user?.roles || []
+  return userRoles.some((role: any) => 
+    role.slug === 'superadmin' || role.slug === 'department_admin'
+  )
+})
 
 onMounted(async () => {
   await Promise.all([
@@ -207,6 +216,10 @@ async function handleTicketCreated() {
 
 function goToTickets() {
   router.push('/tickets')
+}
+
+function goToUsers() {
+  router.push('/users')
 }
 
 function goToTicketDetail(id: number) {

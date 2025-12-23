@@ -72,13 +72,20 @@ export const useTicketStore = defineStore('tickets', () => {
 
     async function fetchStats() {
         try {
-            // Fetch all tickets to calculate stats (no pagination)
+            // Fetch all tickets to calculate stats (now with role-based filtering)
             const response = await api.get('/tickets', { params: { all: 'true' } })
-            console.log('Stats API Response:', response.data)
-            console.log('Is array:', Array.isArray(response.data))
-            console.log('Length:', response.data?.length)
-
             const allTickets = response.data
+
+            // Fetch tickets specifically assigned to the current user
+            let myAssignedTickets = []
+            try {
+                const assignedResponse = await api.get('/tickets/assigned-to-me')
+                myAssignedTickets = assignedResponse.data
+            } catch (assignedError) {
+                console.warn('Failed to fetch assigned tickets, using fallback calculation:', assignedError)
+                // Fallback: calculate from allTickets if endpoint fails
+                myAssignedTickets = allTickets.filter((t: Ticket) => t.assignedTo !== null)
+            }
 
             stats.value = {
                 total: allTickets.length,
@@ -87,16 +94,27 @@ export const useTicketStore = defineStore('tickets', () => {
                 in_progress: allTickets.filter((t: Ticket) => t.status === 'in_progress').length,
                 resolved: allTickets.filter((t: Ticket) => t.status === 'resolved').length,
                 closed: allTickets.filter((t: Ticket) => t.status === 'closed').length,
-                my_assigned: allTickets.filter((t: Ticket) => t.assignedTo !== null).length,
+                my_assigned: myAssignedTickets.length,
                 my_created: allTickets.filter((t: Ticket) => t.requestor !== null).length,
             }
-
-            console.log('Calculated stats:', stats.value)
 
             return stats.value
         } catch (error) {
             console.error('Fetch stats error:', error)
             throw error
+        }
+    }
+
+    async function fetchAssignedToMe() {
+        loading.value = true
+        try {
+            const response = await api.get('/tickets/assigned-to-me')
+            return response.data
+        } catch (error) {
+            console.error('Fetch assigned tickets error:', error)
+            throw error
+        } finally {
+            loading.value = false
         }
     }
 
@@ -120,6 +138,7 @@ export const useTicketStore = defineStore('tickets', () => {
         fetchTickets,
         fetchTicket,
         fetchStats,
+        fetchAssignedToMe,
         createTicket,
     }
 })
