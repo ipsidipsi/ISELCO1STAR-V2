@@ -32,6 +32,11 @@ export const useAuthStore = defineStore('auth', () => {
             user.value = response.data.user
             token.value = response.data.token
 
+            // Merge all active roles if provided
+            if (response.data.all_roles) {
+                user.value.roles = response.data.all_roles
+            }
+
             // Check if must change password
             if (response.data.must_change_password) {
                 await router.push('/change-password')
@@ -61,6 +66,12 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             const response = await api.get('/me')
             user.value = response.data.user
+
+            // Merge all active roles (permanent + temporary) into user.roles
+            if (response.data.all_roles) {
+                user.value.roles = response.data.all_roles
+            }
+
             return response.data
         } catch (error) {
             console.error('Load user error:', error)

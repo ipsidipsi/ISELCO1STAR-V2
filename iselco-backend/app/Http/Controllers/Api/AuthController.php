@@ -87,9 +87,16 @@ class AuthController extends Controller
         $user = $request->user();
         $user->load(['roles.permissions', 'department', 'supervisedDepartments']);
 
+        // Get all active roles (permanent + temporary)
+        $allActiveRoles = $user->allActiveRoles()->load('permissions');
+        
+        // Combine all permissions from both permanent and temporary roles
+        $allPermissions = $allActiveRoles->flatMap->permissions->pluck('slug')->unique()->values();
+
         return response()->json([
             'user' => $user,
-            'permissions' => $user->roles->flatMap->permissions->pluck('slug')->unique()->values(),
+            'all_roles' => $allActiveRoles, // Include temporary roles for frontend
+            'permissions' => $allPermissions,
         ]);
     }
 

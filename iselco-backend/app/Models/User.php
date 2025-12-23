@@ -103,9 +103,14 @@ class User extends Authenticatable
      */
     public function allActiveRoles()
     {
+        // Load permanent roles
         $permanentRoles = $this->roles;
+        
+        // Load temporary roles (automatically filters expired via wherePivot)
+        $this->load('temporaryRoles');
         $temporaryRoles = $this->temporaryRoles;
         
+        // Merge and return unique roles
         return $permanentRoles->merge($temporaryRoles)->unique('id');
     }
 

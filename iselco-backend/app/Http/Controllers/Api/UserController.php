@@ -23,7 +23,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $currentUser = auth()->user();
-        $query = User::with(['roles', 'department']);
+        $query = User::with(['roles', 'temporaryRoles', 'department']);
 
         // Department Admin: Only see users in their department(s)
         if ($currentUser->hasRole('department_admin') && !$currentUser->hasRole('superadmin')) {
@@ -126,7 +126,7 @@ class UserController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $user = User::findOrFail($id);
+        $user = User::with('roles')->findOrFail($id);
         $currentUser = auth()->user();
 
         // Department Admin restrictions
@@ -138,10 +138,10 @@ class UserController extends Controller
                 ], 403);
             }
 
-            // Cannot edit other department admins
+            // Cannot edit ANY other department admins (even in same department)
             if ($user->hasRole('department_admin') && $user->id !== $currentUser->id) {
                 return response()->json([
-                    'error' => 'You cannot edit other department administrators.'
+                    'error' => 'You cannot edit other department administrators. You can only view them.'
                 ], 403);
             }
 
@@ -309,6 +309,16 @@ class UserController extends Controller
             'expires_at' => 'required|date|after:now',
             'reason' => 'nullable|string|max:500',
         ]);
+
+        // Role hierarchy check - prevent dept admin from assigning superadmin role
+        $currentUser = auth()->user();
+        $targetRole = \App\Models\Role::find($request->role_id);
+        
+        if (!$currentUser->hasRole('superadmin') && $targetRole->slug === 'superadmin') {
+            return response()->json([
+                'error' => 'Department admins cannot assign superadmin role as a temporary role.'
+            ], 403);
+        }
 
         // Check if temporary assignment already exists
         $existing = \DB::table('role_user_temporary')

@@ -45,10 +45,21 @@
             <h2>{{ user.employee_name || user.username }}</h2>
             <p>@{{ user.username }}</p>
             <div class="user-meta">
+              <!-- Permanent Roles -->
               <ion-badge v-for="role in user.roles" :key="role.id" 
                         :color="role.slug === 'superadmin' ? 'danger' : role.slug === 'department_admin' ? 'warning' : 'medium'">
                 {{ role.name }}
               </ion-badge>
+              
+              <!-- Temporary Roles (if loaded) -->
+              <ion-badge v-for="tempRole in (user.temporaryRoles || user.temporary_roles)" :key="'temp-'+tempRole.id" 
+                        color="warning"
+                        class="temp-role-badge">
+                {{ tempRole.name }} (Temp)
+                <ion-icon :icon="timeOutline" class="temp-icon"></ion-icon>
+              </ion-badge>
+              
+              <!-- Status Badge -->
               <ion-badge :color="getStatusColor(user.status)">
                 {{ user.status }}
               </ion-badge>
@@ -198,6 +209,66 @@
         </div>
       </ion-content>
     </ion-modal>
+
+    <!-- Temporary Role Assignment Modal -->
+    <ion-modal :is-open="showTempRoleModal" @didDismiss="showTempRoleModal = false">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Assign Temporary Role (OIC)</ion-title>
+          <ion-buttons slot="end">
+            <ion-button @click="showTempRoleModal = false">Close</ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <div v-if="tempRoleUser">
+          <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p class="text-sm text-blue-800">
+              <strong>{{ tempRoleUser.employee_name || tempRoleUser.username }}</strong>
+            </p>
+            <p class="text-xs text-blue-600">Officer in Charge (Temporary Role Assignment)</p>
+          </div>
+
+          <ion-item>
+            <ion-label position="stacked">Role *</ion-label>
+            <ion-select v-model="tempRoleForm.role_id" placeholder="Select temporary role">
+              <ion-select-option v-for="role in availableTempRoles" :key="role.id" :value="role.id">
+                {{ role.name }}
+              </ion-select-option>
+            </ion-select>
+            <ion-note slot="helper">Department admins cannot assign superadmin role</ion-note>
+          </ion-item>
+
+          <ion-item>
+            <ion-label position="stacked">Expiry Date & Time *</ion-label>
+            <ion-datetime 
+              v-model="tempRoleForm.expires_at"
+              presentation="date-time"
+              :min="minDate"
+              display-format="MMM DD, YYYY HH:mm"
+            ></ion-datetime>
+          </ion-item>
+
+          <ion-item>
+            <ion-label position="stacked">Reason</ion-label>
+            <ion-textarea 
+              v-model="tempRoleForm.reason" 
+              placeholder="e.g., OIC while manager on vacation"
+              :rows="3"
+            ></ion-textarea>
+          </ion-item>
+
+          <div class="button-group ion-margin-top">
+            <ion-button expand="block" @click="assignTemporaryRole" color="warning">
+              Assign Temporary Role
+            </ion-button>
+            <ion-button expand="block" @click="showTempRoleModal = false" fill="outline">
+              Cancel
+            </ion-button>
+          </div>
+        </div>
+      </ion-content>
+    </ion-modal>
   </ion-page>
 </template>
 
@@ -208,10 +279,12 @@ import {
   IonButton, IonIcon, IonList, IonItem, IonLabel, IonAvatar, IonBadge,
   IonSearchbar, IonChip, IonRefresher, IonRefresherContent,
   IonInfiniteScroll, IonInfiniteScrollContent, IonModal, IonInput, IonSelect,
-  IonSelectOption, IonCheckbox, IonNote, actionSheetController, toastController, loadingController
+  IonSelectOption, IonCheckbox, IonNote, IonTextarea, IonDatetime, IonDatetimeButton,
+  actionSheetController, toastController, loadingController
 } from '@ionic/vue';
-import { addOutline, ellipsisVerticalOutline, personRemove, lockClosed, checkmarkCircle } from 'ionicons/icons';
+import { addOutline, ellipsisVerticalOutline, personRemove, lockClosed, checkmarkCircle, timeOutline } from 'ionicons/icons';
 import api from '@/services/api';
+import { useAuthStore } from '@/stores/auth';
 
 const searchQuery = ref('');
 const selectedStatus = ref('all');
@@ -220,11 +293,21 @@ const departments = ref<any[]>([]);
 const roles = ref<any[]>([]);
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
+const showTempRoleModal = ref(false);
 const hasMore = ref(false);
 
 //Edit user states
 const editingUser = ref<any | null>(null);
 const editUserRoles = ref<number[]>([]);
+
+//Temporary role states
+const tempRoleUser = ref<any | null>(null);
+const tempRoleForm = ref({
+  role_id: null as number | null,
+  expires_at: '',
+  reason: ''
+});
+const minDate = new Date().toISOString();
 
 const statuses = [
   { label: 'All', value: 'all' },
@@ -261,6 +344,20 @@ const filteredUsers = computed(() => {
     
     return matchesSearch && matchesStatus;
   });
+});
+
+// Filter temp roles based on current user's permissions
+const availableTempRoles = computed(() => {
+  const authStore = useAuthStore();
+  const currentUser = authStore.user;
+  
+  // Superadmin can assign any role
+  if (currentUser?.roles?.some((r: any) => r.slug === 'superadmin')) {
+    return roles.value;
+  }
+  
+  // Department admins cannot assign superadmin role
+  return roles.value.filter((role: any) => role.slug !== 'superadmin');
 });
 
 const getStatusColor = (status: string) => {
@@ -390,6 +487,11 @@ const openUserMenu = async (user: any, event: Event) => {
         handler: () => resetUserPassword(user.id)
       },
       {
+        text: 'Assign Temporary Role',
+        icon: 'time-outline',
+        handler: () => openTempRoleModal(user)
+      },
+      {
         text: 'Suspend',
         icon: lockClosed,
         handler: () => suspendUser(user.id)
@@ -412,6 +514,64 @@ const openUserMenu = async (user: any, event: Event) => {
   });
 
   await actionSheet.present();
+};
+
+const openTempRoleModal = (user: any) => {
+  tempRoleUser.value = user;
+  tempRoleForm.value = {
+    role_id: null,
+    expires_at: '',
+    reason: ''
+  };
+  showTempRoleModal.value = true;
+};
+
+const assignTemporaryRole = async () => {
+  if (!tempRoleForm.value.role_id || !tempRoleForm.value.expires_at) {
+    const toast = await toastController.create({
+      message: 'Please select role and expiry date',
+      duration: 2000,
+      color: 'warning'
+    });
+    await toast.present();
+    return;
+  }
+
+  const loading = await loadingController.create({ message: 'Assigning temporary role...' });
+  await loading.present();
+
+  try {
+    // Format the datetime to MySQL format (YYYY-MM-DD HH:MM:SS)
+    const expiryDate = new Date(tempRoleForm.value.expires_at);
+    const formattedExpiry = expiryDate.toISOString().slice(0, 19).replace('T', ' ');
+
+    await api.post(`/users/${tempRoleUser.value.id}/assign-temporary-role`, {
+      role_id: tempRoleForm.value.role_id,
+      expires_at: formattedExpiry,
+      reason: tempRoleForm.value.reason || null
+    });
+
+    const toast = await toastController.create({
+      message: 'Temporary role assigned successfully',
+      duration: 2000,
+      color: 'success'
+    });
+    await toast.present();
+
+    showTempRoleModal.value = false;
+    await loadUsers();
+  } catch (error: any) {
+    console.error('Assign temporary role error:', error.response?.data);
+    const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to assign temporary role';
+    const toast = await toastController.create({
+      message: errorMsg,
+      duration: 5000,
+      color: 'danger'
+    });
+    await toast.present();
+  } finally {
+    await loading.dismiss();
+  }
 };
 
 const resetUserPassword = async (userId: number) => {
@@ -594,5 +754,21 @@ onMounted(async () => {
   --padding-end: 16px;
   text-transform: none;
   letter-spacing: 0.3px;
+}
+
+.temp-role-badge {
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%) !important;
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.temp-icon {
+  font-size: 14px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
 }
 </style>
