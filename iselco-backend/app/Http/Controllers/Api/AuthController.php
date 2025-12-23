@@ -97,29 +97,31 @@ class AuthController extends Controller
      * Change password
      * 
      * POST /api/change-password
-     * Body: { current_password, new_password, new_password_confirmation }
+     * Body: { current_password (optional), new_password, new_password_confirmation }
      */
     public function changePassword(Request $request)
     {
         $request->validate([
-            'current_password' => 'required|string',
-            'new_password' => 'required|string|min:8|confirmed|different:current_password',
+            'current_password' => 'nullable|string',
+            'new_password' => 'required|string|min:4|confirmed',
         ]);
 
         $user = $request->user();
 
-        // Verify current password
-        if (!Hash::check($request->current_password, $user->password)) {
-            throw ValidationException::withMessages([
-                'current_password' => ['The current password is incorrect.'],
-            ]);
-        }
-
-        // Prevent using default password
-        if ($request->new_password === '1234') {
-            throw ValidationException::withMessages([
-                'new_password' => ['You cannot use the default password.'],
-            ]);
+        // Verify current password if provided
+        if ($request->filled('current_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                throw ValidationException::withMessages([
+                    'current_password' => ['The current password is incorrect.'],
+                ]);
+            }
+            
+            // Ensure new password is different from current
+            if ($request->current_password === $request->new_password) {
+                throw ValidationException::withMessages([
+                    'new_password' => ['The new password must be different from the current password.'],
+                ]);
+            }
         }
 
         // Update password and clear must_change flag

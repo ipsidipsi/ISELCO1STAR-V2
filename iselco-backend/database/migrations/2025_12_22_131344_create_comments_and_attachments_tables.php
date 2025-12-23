@@ -26,7 +26,8 @@ return new class extends Migration {
             $table->string('file_path');
             $table->unsignedBigInteger('file_size');
             $table->string('mime_type');
-            $table->foreignId('uploaded_by_user_id')->constrained('users');
+            $table->unsignedBigInteger('uploaded_by')->nullable();
+            $table->foreign('uploaded_by')->references('id')->on('users')->onDelete('set null');
             $table->timestamps();
             $table->index(['attachable_type', 'attachable_id']);
         });

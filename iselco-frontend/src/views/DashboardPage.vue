@@ -148,11 +148,19 @@
         </template>
       </div>
     </ion-content>
+
+    <!-- Create Ticket Modal -->
+    <CreateTicketModal
+      :is-open="showCreateModal"
+      @close="showCreateModal = false"
+      @created="handleTicketCreated"
+    />
   </ion-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { 
   IonPage, IonHeader, IonToolbar, IonContent, IonButton, 
   IonIcon, IonSpinner 
@@ -164,11 +172,14 @@ import {
 } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 import { useTickets } from '@/composables/useTickets'
+import CreateTicketModal from '@/components/CreateTicketModal.vue'
 
+const router = useRouter()
 const authStore = useAuthStore()
 const { stats, tickets, loading, loadStats, loadTickets } = useTickets()
 
 const user = computed(() => authStore.user)
+const showCreateModal = ref(false)
 
 onMounted(async () => {
   await Promise.all([
@@ -179,6 +190,32 @@ onMounted(async () => {
 
 async function handleLogout() {
   await authStore.logout()
+}
+
+function openCreateTicket() {
+  showCreateModal.value = true
+}
+
+async function handleTicketCreated() {
+  // Reload stats and tickets after creating
+  await Promise.all([
+    loadStats(),
+    loadTickets({ limit: 5 })
+  ])
+}
+
+function goToTickets() {
+  router.push('/tickets')
+}
+
+function goToReports() {
+  // TODO: Navigate to reports page
+  console.log('Navigate to reports')
+}
+
+function goToSettings() {
+  // TODO: Navigate to settings page
+  console.log('Navigate to settings')
 }
 
 function getStatusClass(status: string) {

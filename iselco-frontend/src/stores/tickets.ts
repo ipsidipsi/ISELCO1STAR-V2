@@ -72,9 +72,9 @@ export const useTicketStore = defineStore('tickets', () => {
 
     async function fetchStats() {
         try {
-            // Fetch all tickets to calculate stats
-            const response = await api.get('/tickets')
-            const allTickets = response.data.data || response.data
+            // Fetch all tickets to calculate stats (no pagination)
+            const response = await api.get('/tickets', { params: { all: 'true' } })
+            const allTickets = response.data
 
             stats.value = {
                 total: allTickets.length,

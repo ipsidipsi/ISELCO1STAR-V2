@@ -68,13 +68,19 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    async function changePassword(currentPassword: string, newPassword: string, confirmPassword: string) {
+    async function changePassword(currentPassword: string | null, newPassword: string, confirmPassword: string) {
         try {
-            const response = await api.post('/change-password', {
-                current_password: currentPassword,
+            const payload: any = {
                 new_password: newPassword,
                 new_password_confirmation: confirmPassword,
-            })
+            }
+
+            // Only include current password if provided
+            if (currentPassword) {
+                payload.current_password = currentPassword
+            }
+
+            const response = await api.post('/change-password', payload)
 
             // Reload user to update must_change_password flag
             await loadUser()

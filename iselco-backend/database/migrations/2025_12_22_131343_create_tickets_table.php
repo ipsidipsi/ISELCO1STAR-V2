@@ -21,7 +21,7 @@ return new class extends Migration {
         });
 
         // Timeline
-        Schema::create('ticket_timeline', function (Blueprint $table) {
+        Schema::create('ticket_timelines', function (Blueprint $table) {
             $table->id();
             $table->foreignId('ticket_id')->constrained()->onDelete('cascade');
             $table->string('status_from')->nullable();
@@ -33,7 +33,7 @@ return new class extends Migration {
     }
 
     public function down(): void {
-        Schema::dropIfExists('ticket_timeline');
+        Schema::dropIfExists('ticket_timelines');
         Schema::dropIfExists('tickets');
     }
 };

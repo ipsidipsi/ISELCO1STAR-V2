@@ -23,14 +23,21 @@ class DatabaseSeeder extends Seeder
         // Seed RBAC system (roles and permissions)
         $this->call(RolePermissionSeeder::class);
         
-        // Seed priorities
+        // Seed priorities (required before categories)
         $this->call(PrioritySeeder::class);
+        
+        // Seed sample departments
+        $this->call(DepartmentSeeder::class);
+        
+        // Seed sample categories (requires departments and priorities)
+        $this->call(CategorySeeder::class);
         
         // Create superadmin account
         $this->call(SuperadminSeeder::class);
         
         $this->command->info('');
         $this->command->info('🎉 Database seeding completed successfully!');
-        $this->command->info('✅ Ready to sync departments and employees from external API');
+        $this->command->info('✅ Sample data ready for testing');
+        $this->command->info('💡 Later: Sync real departments/employees from external API');
     }
 }

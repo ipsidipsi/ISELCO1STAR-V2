@@ -57,8 +57,12 @@ class TicketController extends Controller
         // Sort
         $query->orderBy('created_at', 'desc');
 
-        // Paginate
-        $tickets = $query->paginate(20);
+        // Paginate or get all
+        if ($request->has('all') && $request->all === 'true') {
+            $tickets = $query->get();
+        } else {
+            $tickets = $query->paginate($request->input('per_page', 20));
+        }
 
         return response()->json($tickets);
     }
@@ -156,7 +160,12 @@ class TicketController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => 'Failed to create ticket'], 500);
+            \Log::error('Ticket creation failed: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            return response()->json([
+                'error' => 'Failed to create ticket',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 

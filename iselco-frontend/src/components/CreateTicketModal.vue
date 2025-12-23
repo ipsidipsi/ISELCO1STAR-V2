@@ -69,6 +69,7 @@
           </label>
           <select
             v-model="form.category_id"
+            @change="handleCategoryChange"
             :disabled="!form.department_id"
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-transparent disabled:opacity-50"
             :class="{ 'border-red-500': errors.category_id }"
@@ -81,22 +82,27 @@
           <p v-if="errors.category_id" class="text-red-500 text-sm mt-1">{{ errors.category_id }}</p>
         </div>
 
-        <!-- Priority -->
+        <!-- Priority (Auto-selected based on category) -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">
             Priority <span class="text-red-500">*</span>
+            <span class="text-xs text-gray-500 ml-2">(Auto-selected from category)</span>
           </label>
           <select
             v-model="form.priority_id"
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-transparent"
+            disabled
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
             :class="{ 'border-red-500': errors.priority_id }"
           >
-            <option value="">Select priority</option>
+            <option value="">Select category first</option>
             <option v-for="priority in priorities" :key="priority.id" :value="priority.id">
               {{ priority.name }} ({{ priority.sla_hours }}h SLA)
             </option>
           </select>
           <p v-if="errors.priority_id" class="text-red-500 text-sm mt-1">{{ errors.priority_id }}</p>
+          <p v-if="selectedPriorityInfo" class="text-sm text-teal-600 mt-1">
+            ✓ Priority set to: <strong>{{ selectedPriorityInfo.name }}</strong> ({{ selectedPriorityInfo.sla_hours }}h SLA)
+          </p>
         </div>
 
         <!-- Error Message -->
@@ -178,6 +184,11 @@ const filteredCategories = computed(() => {
   )
 })
 
+const selectedPriorityInfo = computed(() => {
+  if (!form.value.priority_id) return null
+  return priorities.value.find(p => p.id === Number(form.value.priority_id))
+})
+
 onMounted(async () => {
   if (departments.value.length === 0) {
     await metadataStore.fetchAllMetadata()
@@ -192,6 +203,18 @@ watch(() => props.isOpen, (newVal) => {
 
 function handleDepartmentChange() {
   form.value.category_id = ''
+  form.value.priority_id = ''
+}
+
+function handleCategoryChange() {
+  // Auto-select priority based on category
+  const selectedCategory = categories.value.find(
+    cat => cat.id === Number(form.value.category_id)
+  )
+  
+  if (selectedCategory && selectedCategory.priority_id) {
+    form.value.priority_id = String(selectedCategory.priority_id)
+  }
 }
 
 function validateForm() {

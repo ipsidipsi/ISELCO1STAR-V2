@@ -47,7 +47,7 @@ export function useAuth() {
         await authStore.logout()
     }
 
-    async function changePassword(current: string, newPass: string, confirm: string) {
+    async function changePassword(current: string | null, newPass: string, confirm: string) {
         loading.value = true
         errorMessage.value = ''
 
