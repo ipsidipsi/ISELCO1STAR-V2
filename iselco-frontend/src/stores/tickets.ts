@@ -74,6 +74,10 @@ export const useTicketStore = defineStore('tickets', () => {
         try {
             // Fetch all tickets to calculate stats (no pagination)
             const response = await api.get('/tickets', { params: { all: 'true' } })
+            console.log('Stats API Response:', response.data)
+            console.log('Is array:', Array.isArray(response.data))
+            console.log('Length:', response.data?.length)
+
             const allTickets = response.data
 
             stats.value = {
@@ -86,6 +90,8 @@ export const useTicketStore = defineStore('tickets', () => {
                 my_assigned: allTickets.filter((t: Ticket) => t.assignedTo !== null).length,
                 my_created: allTickets.filter((t: Ticket) => t.requestor !== null).length,
             }
+
+            console.log('Calculated stats:', stats.value)
 
             return stats.value
         } catch (error) {

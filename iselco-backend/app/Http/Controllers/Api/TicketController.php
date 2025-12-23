@@ -57,11 +57,18 @@ class TicketController extends Controller
         // Sort
         $query->orderBy('created_at', 'desc');
 
+        // Debug logging
+        \Log::info('Tickets query count: ' . $query->count());
+        \Log::info('All param: ' . $request->input('all'));
+        \Log::info('Has all param: ' . ($request->has('all') ? 'yes' : 'no'));
+
         // Paginate or get all
-        if ($request->has('all') && $request->all === 'true') {
+        if ($request->has('all') && $request->input('all') === 'true') {
             $tickets = $query->get();
+            \Log::info('Returning all tickets: ' . $tickets->count());
         } else {
             $tickets = $query->paginate($request->input('per_page', 20));
+            \Log::info('Returning paginated tickets');
         }
 
         return response()->json($tickets);

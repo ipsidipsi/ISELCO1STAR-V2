@@ -1,4 +1,5 @@
 import { ref, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useTicketStore } from '@/stores/tickets'
 
 /**
@@ -8,6 +9,9 @@ import { useTicketStore } from '@/stores/tickets'
  */
 export function useTickets() {
     const ticketStore = useTicketStore()
+
+    // Use storeToRefs to maintain reactivity
+    const { tickets, stats } = storeToRefs(ticketStore)
 
     const loading = ref(false)
     const error = ref('')
@@ -54,8 +58,8 @@ export function useTickets() {
     }
 
     return {
-        tickets: ticketStore.tickets,
-        stats: ticketStore.stats,
+        tickets,
+        stats,
         loading,
         error,
         loadTickets,

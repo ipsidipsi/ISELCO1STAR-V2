@@ -105,16 +105,6 @@
           </p>
         </div>
 
-        <!-- Error Message -->
-        <div v-if="errorMessage" class="p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p class="text-red-700 text-sm">{{ errorMessage }}</p>
-        </div>
-
-        <!-- Success Message -->
-        <div v-if="successMessage" class="p-3 bg-green-50 border border-green-200 rounded-lg">
-          <p class="text-green-700 text-sm">{{ successMessage }}</p>
-        </div>
-
         <!-- Buttons -->
         <div class="flex space-x-3 pt-4">
           <button
@@ -147,6 +137,7 @@ import {
 import { closeOutline } from 'ionicons/icons'
 import { useMetadataStore } from '@/stores/metadata'
 import { useTickets } from '@/composables/useTickets'
+import { useNotification } from '@/composables/useNotification'
 
 const props = defineProps<{
   isOpen: boolean
@@ -159,6 +150,7 @@ const emit = defineEmits<{
 
 const metadataStore = useMetadataStore()
 const { createTicket } = useTickets()
+const { showSuccess, showError } = useNotification()
 
 const form = ref({
   title: '',
@@ -170,8 +162,6 @@ const form = ref({
 
 const errors = ref<Record<string, string>>({})
 const loading = ref(false)
-const errorMessage = ref('')
-const successMessage = ref('')
 
 const departments = computed(() => metadataStore.departments)
 const categories = computed(() => metadataStore.categories)
@@ -233,11 +223,9 @@ async function handleSubmit() {
   if (!validateForm()) return
   
   loading.value = true
-  errorMessage.value = ''
-  successMessage.value = ''
   
   try {
-    await createTicket({
+    const ticket = await createTicket({
       title: form.value.title,
       description: form.value.description,
       department_id: Number(form.value.department_id),
@@ -245,14 +233,20 @@ async function handleSubmit() {
       priority_id: Number(form.value.priority_id),
     })
     
-    successMessage.value = 'Ticket created successfully!'
+    // Show success notification with ticket number
+    await showSuccess(
+      'Ticket Created Successfully!',
+      `Your ticket ${ticket.ticket_number} has been created and assigned priority: ${selectedPriorityInfo.value?.name}`
+    )
     
-    setTimeout(() => {
-      emit('created')
-      closeModal()
-    }, 1000)
+    emit('created')
+    closeModal()
   } catch (error: any) {
-    errorMessage.value = error.message || 'Failed to create ticket'
+    // Show error notification
+    await showError(
+      'Failed to Create Ticket',
+      error.message || 'An error occurred while creating the ticket. Please try again.'
+    )
   } finally {
     loading.value = false
   }
@@ -267,8 +261,6 @@ function resetForm() {
     priority_id: '',
   }
   errors.value = {}
-  errorMessage.value = ''
-  successMessage.value = ''
 }
 
 function closeModal() {

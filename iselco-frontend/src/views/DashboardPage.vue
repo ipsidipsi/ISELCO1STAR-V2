@@ -36,9 +36,9 @@
             <!-- Total Tickets -->
             <div class="glass-card card-blue">
               <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm text-gray-700 font-medium mb-1">Total Tickets</p>
-                  <p class="text-3xl font-bold text-navy-700">{{ stats.total }}</p>
+                <div class="flex-1">
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Total Tickets</p>
+                  <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.total }}</p>
                 </div>
                 <div class="icon-glow icon-blue">
                   <ion-icon :icon="documentsOutline" class="text-2xl text-blue-600"></ion-icon>
@@ -49,9 +49,9 @@
             <!-- Assigned to Me -->
             <div class="glass-card card-teal">
               <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm text-gray-700 font-medium mb-1">Assigned to Me</p>
-                  <p class="text-3xl font-bold text-navy-700">{{ stats.my_assigned }}</p>
+                <div class="flex-1">
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Assigned to Me</p>
+                  <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.my_assigned }}</p>
                 </div>
                 <div class="icon-glow icon-teal">
                   <ion-icon :icon="personOutline" class="text-2xl text-teal-600"></ion-icon>
@@ -62,9 +62,9 @@
             <!-- In Progress -->
             <div class="glass-card card-yellow">
               <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm text-gray-700 font-medium mb-1">In Progress</p>
-                  <p class="text-3xl font-bold text-navy-700">{{ stats.in_progress }}</p>
+                <div class="flex-1">
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">In Progress</p>
+                  <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.in_progress }}</p>
                 </div>
                 <div class="icon-glow icon-yellow">
                   <ion-icon :icon="timeOutline" class="text-2xl text-yellow-600"></ion-icon>
@@ -75,9 +75,9 @@
             <!-- Resolved -->
             <div class="glass-card card-green">
               <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm text-gray-700 font-medium mb-1">Resolved</p>
-                  <p class="text-3xl font-bold text-navy-700">{{ stats.resolved }}</p>
+                <div class="flex-1">
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Resolved</p>
+                  <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.resolved }}</p>
                 </div>
                 <div class="icon-glow icon-green">
                   <ion-icon :icon="checkmarkCircleOutline" class="text-2xl text-green-600"></ion-icon>
