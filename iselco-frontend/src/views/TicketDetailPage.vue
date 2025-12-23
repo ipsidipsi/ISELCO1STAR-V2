@@ -162,17 +162,8 @@
           </div>
         </div>
 
-        <!-- Comments Section (Placeholder) -->
-        <div class="glass-card p-6">
-          <h3 class="text-lg font-bold text-navy-700 mb-4 flex items-center">
-            <ion-icon :icon="chatbubblesOutline" class="mr-2 text-teal"></ion-icon>
-            Comments
-          </h3>
-          <div class="text-center py-8 text-gray-500">
-            <ion-icon :icon="chatbubblesOutline" class="text-5xl mb-2 text-gray-300"></ion-icon>
-            <p>Comments feature coming soon</p>
-          </div>
-        </div>
+        <!-- Comments Section -->
+        <CommentSection :ticket-id="ticketId" />
 
         <!-- Attachments Section (Placeholder) -->
         <div class="glass-card p-6">
@@ -219,6 +210,7 @@ import {
 } from 'ionicons/icons'
 import { useTicketDetail } from '@/composables/useTicketDetail'
 import { useAuthStore } from '@/stores/auth'
+import CommentSection from '@/components/CommentSection.vue'
 import Swal from 'sweetalert2'
 
 const route = useRoute()

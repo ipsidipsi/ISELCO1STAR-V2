@@ -57,6 +57,9 @@ class CommentController extends Controller
         // Load relationships for response
         $comment->load(['user', 'attachments']);
 
+        // Broadcast the new comment to other users viewing this ticket
+        broadcast(new \App\Events\CommentCreated($comment, $ticketId))->toOthers();
+
         return response()->json($comment, 201);
     }
 
@@ -100,6 +103,11 @@ class CommentController extends Controller
         ]);
 
         $comment->update(['message' => $request->message]);
+        
+        $comment->load(['user', 'attachments']);
+
+        // Broadcast the update to other users
+        broadcast(new \App\Events\CommentUpdated($comment, $comment->ticket_id))->toOthers();
 
         return response()->json($comment);
     }
@@ -117,8 +125,14 @@ class CommentController extends Controller
         if ($comment->user_id !== $request->user()->id && !$request->user()->isSuperadmin()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
+        
+        $ticketId = $comment->ticket_id;
+        $commentId = $comment->id;
 
         $comment->delete();
+
+        // Broadcast the deletion to other users
+        broadcast(new \App\Events\CommentDeleted($commentId, $ticketId))->toOthers();
 
         return response()->json(['message' => 'Comment deleted successfully']);
     }
