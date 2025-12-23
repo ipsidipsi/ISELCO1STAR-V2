@@ -124,6 +124,13 @@ class AuthController extends Controller
             }
         }
 
+        // Prevent using '1234' as password - it's meant to be temporary only
+        if ($request->new_password === '1234') {
+            throw ValidationException::withMessages([
+                'new_password' => ['Cannot use "1234" as your password. Please choose a different password.'],
+            ]);
+        }
+
         // Update password and clear must_change flag
         $user->update([
             'password' => Hash::make($request->new_password),

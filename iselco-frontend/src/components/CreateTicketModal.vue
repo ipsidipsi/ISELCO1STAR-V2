@@ -105,6 +105,68 @@
           </p>
         </div>
 
+        <!-- Assign To (Optional) -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Assign To (Optional)
+            <span class="text-xs text-gray-500 ml-2">Search by name or leave empty for auto-assignment</span>
+          </label>
+          <div class="relative">
+            <ion-searchbar
+              v-model="userSearchQuery"
+              placeholder="Search for user..."
+              @ionInput="handleUserSearch"
+              :disabled="!form.department_id"
+              class="user-searchbar"
+            ></ion-searchbar>
+            
+            <!-- User Search Results Dropdown -->
+            <div v-if="showUserDropdown && filteredUsers.length > 0" class="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+              <div
+                v-for="user in filteredUsers"
+                :key="user.id"
+                @click="selectUser(user)"
+                class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+              >
+                <div class="font-medium text-gray-900">{{ user.employee_name || user.username }}</div>
+                <div class="text-sm text-gray-500">
+                  @{{ user.username }} • {{ user.department?.name || 'No Department' }}
+                </div>
+                <div class="text-xs text-gray-400 mt-1">
+                  <span v-for="role in user.roles" :key="role.id" class="inline-block mr-2">
+                    {{ role.name }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- No Results -->
+            <div v-if="showUserDropdown && userSearchQuery && filteredUsers.length === 0" class="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 px-4 py-3 text-gray-500 text-sm">
+              No users found matching "{{ userSearchQuery }}"
+            </div>
+          </div>
+          
+          <!-- Selected User Display -->
+          <div v-if="selectedUser" class="mt-2 p-3 bg-teal-50 border border-teal-200 rounded-lg flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                {{ selectedUser.employee_name?.charAt(0) || 'U' }}
+              </div>
+              <div>
+                <div class="font-medium text-gray-900">{{ selectedUser.employee_name || selectedUser.username }}</div>
+                <div class="text-xs text-gray-600">{{ selectedUser.department?.name || 'No Department' }}</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              @click="clearSelectedUser"
+              class="text-red-600 hover:text-red-800 text-sm font-medium"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+
         <!-- Buttons -->
         <div class="flex space-x-3 pt-4">
           <button
@@ -132,12 +194,13 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import {
   IonModal, IonHeader, IonToolbar, IonTitle, IonContent,
-  IonButtons, IonButton, IonIcon, IonInput, IonTextarea, IonSpinner
+  IonButtons, IonButton, IonIcon, IonInput, IonTextarea, IonSpinner, IonSearchbar
 } from '@ionic/vue'
 import { closeOutline } from 'ionicons/icons'
 import { useMetadataStore } from '@/stores/metadata'
 import { useTickets } from '@/composables/useTickets'
 import { useNotification } from '@/composables/useNotification'
+import api from '@/services/api'
 
 const props = defineProps<{
   isOpen: boolean
@@ -158,10 +221,19 @@ const form = ref({
   department_id: '',
   category_id: '',
   priority_id: '',
+  assigned_to_id: null as number | null,
 })
 
 const errors = ref<Record<string, string>>({})
 const loading = ref(false)
+
+// User assignment states
+const userSearchQuery = ref('')
+const allUsers = ref<any[]>([])
+const filteredUsers = ref<any[]>([])
+const selectedUser = ref<any | null>(null)
+const showUserDropdown = ref(false)
+const searchTimeout = ref<any>(null)
 
 const departments = computed(() => metadataStore.departments)
 const categories = computed(() => metadataStore.categories)
@@ -194,6 +266,12 @@ watch(() => props.isOpen, (newVal) => {
 function handleDepartmentChange() {
   form.value.category_id = ''
   form.value.priority_id = ''
+  // Clear user selection when department changes
+  clearSelectedUser()
+  // Load users for the new department
+  if (form.value.department_id) {
+    loadUsersForDepartment(Number(form.value.department_id))
+  }
 }
 
 function handleCategoryChange() {
@@ -219,19 +297,73 @@ function validateForm() {
   return Object.keys(errors.value).length === 0
 }
 
+// User assignment functions
+async function loadUsersForDepartment(departmentId: number) {
+  try {
+    const response = await api.get('/users', { params: { department_id: departmentId } })
+    allUsers.value = response.data.data || response.data
+  } catch (error) {
+    console.error('Failed to load users:', error)
+    allUsers.value = []
+  }
+}
+
+function handleUserSearch() {
+  // Debounce search
+  clearTimeout(searchTimeout.value)
+  
+  searchTimeout.value = setTimeout(() => {
+    if (!userSearchQuery.value || userSearchQuery.value.length < 2) {
+      filteredUsers.value = []
+      showUserDropdown.value = false
+      return
+    }
+    
+    const query = userSearchQuery.value.toLowerCase()
+    filteredUsers.value = allUsers.value.filter(user => 
+      user.employee_name?.toLowerCase().includes(query) ||
+      user.username?.toLowerCase().includes(query)
+    )
+    showUserDropdown.value = true
+  }, 300)
+}
+
+function selectUser(user: any) {
+  selectedUser.value = user
+  form.value.assigned_to_id = user.id
+  userSearchQuery.value = ''
+  showUserDropdown.value = false
+  filteredUsers.value = []
+}
+
+function clearSelectedUser() {
+  selectedUser.value = null
+  form.value.assigned_to_id = null
+  userSearchQuery.value = ''
+  filteredUsers.value = []
+  showUserDropdown.value = false
+}
+
 async function handleSubmit() {
   if (!validateForm()) return
   
   loading.value = true
   
   try {
-    const ticket = await createTicket({
+    const ticketData: any = {
       title: form.value.title,
       description: form.value.description,
       department_id: Number(form.value.department_id),
       category_id: Number(form.value.category_id),
       priority_id: Number(form.value.priority_id),
-    })
+    }
+    
+    // Add assigned_to_id if a user is selected
+    if (form.value.assigned_to_id) {
+      ticketData.assigned_to_id = form.value.assigned_to_id
+    }
+    
+    const ticket = await createTicket(ticketData)
     
     // Show success notification with ticket number
     await showSuccess(
@@ -259,8 +391,10 @@ function resetForm() {
     department_id: '',
     category_id: '',
     priority_id: '',
+    assigned_to_id: null,
   }
   errors.value = {}
+  clearSelectedUser()
 }
 
 function closeModal() {
@@ -283,5 +417,13 @@ function closeModal() {
   border-color: #14B8A6;
   outline: none;
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+}
+
+.user-searchbar {
+  --background: white;
+  --border-radius: 0.5rem;
+  --box-shadow: none;
+  --placeholder-color: #9CA3AF;
+  padding: 0;
 }
 </style>

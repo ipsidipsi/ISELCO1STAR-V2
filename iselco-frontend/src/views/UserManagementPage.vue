@@ -7,8 +7,9 @@
         </ion-buttons>
         <ion-title>User Management</ion-title>
         <ion-buttons slot="end">
-          <ion-button @click="showCreateModal = true">
-            <ion-icon slot="icon-only" :icon="addOutline"></ion-icon>
+          <ion-button @click="showCreateModal = true" fill="solid" color="success" class="add-user-button">
+            <ion-icon slot="start" :icon="addOutline"></ion-icon>
+            Add User
           </ion-button>
         </ion-buttons>
       </ion-toolbar>
@@ -102,9 +103,17 @@
           </ion-select>
         </ion-item>
 
+
         <ion-item>
           <ion-label position="stacked">Password *</ion-label>
           <ion-input v-model="newUser.password" type="password" placeholder="Enter password"></ion-input>
+          <ion-note slot="helper">Minimum 4 characters</ion-note>
+        </ion-item>
+
+        <ion-item>
+          <ion-label position="stacked">Confirm Password *</ion-label>
+          <ion-input v-model="newUser.confirm_password" type="password" placeholder="Re-enter password"></ion-input>
+          <ion-note slot="error" v-if="passwordMismatch">Passwords do not match</ion-note>
         </ion-item>
 
         <ion-item>
@@ -122,6 +131,73 @@
         </ion-button>
       </ion-content>
     </ion-modal>
+
+    <!-- Edit User Modal -->
+    <ion-modal :is-open="showEditModal" @didDismiss="showEditModal = false">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Edit User</ion-title>
+          <ion-buttons slot="end">
+            <ion-button @click="showEditModal = false">Close</ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <div v-if="editingUser">
+          <ion-item>
+            <ion-label position="stacked">Username</ion-label>
+            <ion-input v-model="editingUser.username" placeholder="Enter username" disabled></ion-input>
+            <ion-note slot="helper">Username cannot be changed</ion-note>
+          </ion-item>
+          
+          <ion-item>
+            <ion-label position="stacked">Employee Name *</ion-label>
+            <ion-input v-model="editingUser.employee_name" placeholder="Enter full name"></ion-input>
+          </ion-item>
+
+          <ion-item>
+            <ion-label position="stacked">Mobile Number</ion-label>
+            <ion-input v-model="editingUser.mobile_number" type="tel" placeholder="Enter mobile"></ion-input>
+          </ion-item>
+
+          <ion-item>
+            <ion-label position="stacked">Primary Department</ion-label>
+            <ion-select v-model="editingUser.department_id" placeholder="Select department">
+              <ion-select-option v-for="dept in departments" :key="dept.id" :value="dept.id">
+                {{ dept.name }}
+              </ion-select-option>
+            </ion-select>
+          </ion-item>
+
+          <ion-item>
+            <ion-label>Roles</ion-label>
+          </ion-item>
+          <ion-list>
+            <ion-item v-for="role in roles" :key="role.id">
+              <ion-label>{{ role.name }}</ion-label>
+              <ion-checkbox 
+                slot="end" 
+                :checked="editUserRoles.includes(role.id)" 
+                @ionChange="toggleEditUserRole(role.id)"
+              ></ion-checkbox>
+            </ion-item>
+          </ion-list>
+
+          <ion-item lines="none" class="ion-margin-top">
+            <ion-label>Status: <strong>{{ editingUser.status }}</strong></ion-label>
+          </ion-item>
+
+          <div class="button-group ion-margin-top">
+            <ion-button expand="block" @click="updateUser" color="primary">
+              Save Changes
+            </ion-button>
+            <ion-button expand="block" @click="showEditModal = false" fill="outline">
+              Cancel
+            </ion-button>
+          </div>
+        </div>
+      </ion-content>
+    </ion-modal>
   </ion-page>
 </template>
 
@@ -132,7 +208,7 @@ import {
   IonButton, IonIcon, IonList, IonItem, IonLabel, IonAvatar, IonBadge,
   IonSearchbar, IonChip, IonRefresher, IonRefresherContent,
   IonInfiniteScroll, IonInfiniteScrollContent, IonModal, IonInput, IonSelect,
-  IonSelectOption, IonCheckbox, actionSheetController, toastController, loadingController
+  IonSelectOption, IonCheckbox, IonNote, actionSheetController, toastController, loadingController
 } from '@ionic/vue';
 import { addOutline, ellipsisVerticalOutline, personRemove, lockClosed, checkmarkCircle } from 'ionicons/icons';
 import api from '@/services/api';
@@ -143,7 +219,12 @@ const users = ref<any[]>([]);
 const departments = ref<any[]>([]);
 const roles = ref<any[]>([]);
 const showCreateModal = ref(false);
+const showEditModal = ref(false);
 const hasMore = ref(false);
+
+//Edit user states
+const editingUser = ref<any | null>(null);
+const editUserRoles = ref<number[]>([]);
 
 const statuses = [
   { label: 'All', value: 'all' },
@@ -160,9 +241,15 @@ const newUser = ref({
   mobile_number: '',
   department_id: null,
   password: '',
+  confirm_password: '',
 });
 
 const selectedRoles = ref<number[]>([]);
+
+const passwordMismatch = computed(() => {
+  if (!newUser.value.confirm_password) return false;
+  return newUser.value.password !== newUser.value.confirm_password;
+});
 
 const filteredUsers = computed(() => {
   return users.value.filter(user => {
@@ -225,12 +312,36 @@ const loadRoles = async () => {
 };
 
 const createUser = async () => {
+  // Validate passwords
+  if (!newUser.value.password || newUser.value.password.length < 4) {
+    const toast = await toastController.create({
+      message: 'Password must be at least 4 characters',
+      duration: 3000,
+      color: 'warning'
+    });
+    await toast.present();
+    return;
+  }
+
+  if (newUser.value.password !== newUser.value.confirm_password) {
+    const toast = await toastController.create({
+      message: 'Passwords do not match',
+      duration: 3000,
+      color: 'warning'
+    });
+    await toast.present();
+    return;
+  }
+
   const loading = await loadingController.create({ message: 'Creating user...' });
   await loading.present();
 
   try {
+    // Don't send confirm_password to API
+    const { confirm_password, ...userData } = newUser.value;
+    
     await api.post('/users', {
-      ...newUser.value,
+      ...userData,
       role_ids: selectedRoles.value
     });
 
@@ -242,7 +353,14 @@ const createUser = async () => {
     await toast.present();
 
     showCreateModal.value = false;
-    newUser.value = { username: '', employee_name: '', mobile_number: '', department_id: null, password: '' };
+    newUser.value = { 
+      username: '', 
+      employee_name: '', 
+      mobile_number: '', 
+      department_id: null, 
+      password: '',
+      confirm_password: ''
+    };
     selectedRoles.value = [];
     await loadUsers();
   } catch (error: any) {
@@ -261,6 +379,16 @@ const openUserMenu = async (user: any, event: Event) => {
   const actionSheet = await actionSheetController.create({
     header: user.employee_name || user.username,
     buttons: [
+      {
+        text: 'Edit',
+        icon: 'create-outline',
+        handler: () => viewUser(user)
+      },
+      {
+        text: 'Reset Password',
+        icon: 'key-outline',
+        handler: () => resetUserPassword(user.id)
+      },
       {
         text: 'Suspend',
         icon: lockClosed,
@@ -284,6 +412,26 @@ const openUserMenu = async (user: any, event: Event) => {
   });
 
   await actionSheet.present();
+};
+
+const resetUserPassword = async (userId: number) => {
+  try {
+    await api.post(`/users/${userId}/reset-password`);
+    const toast = await toastController.create({
+      message: 'Password reset to 1234. User must change password on next login.',
+      duration: 3000,
+      color: 'success'
+    });
+    await toast.present();
+    await loadUsers();
+  } catch (error: any) {
+    const toast = await toastController.create({
+      message: error.response?.data?.message || 'Failed to reset password',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
+  }
 };
 
 const suspendUser = async (userId: number) => {
@@ -346,8 +494,57 @@ const loadMore = (event: any) => {
 };
 
 const viewUser = (user: any) => {
-  // Navigate to user detail page
-  console.log('View user:', user);
+  // Open edit modal with user data
+  editingUser.value = { ...user };
+  editUserRoles.value = user.roles?.map((r: any) => r.id) || [];
+  showEditModal.value = true;
+};
+
+const toggleEditUserRole = (roleId: number) => {
+  const index = editUserRoles.value.indexOf(roleId);
+  if (index > -1) {
+    editUserRoles.value.splice(index, 1);
+  } else {
+    editUserRoles.value.push(roleId);
+  }
+};
+
+const updateUser = async () => {
+  const loading = await loadingController.create({ message: 'Updating user...' });
+  await loading.present();
+
+  try {
+    // Update user basic info
+    await api.put(`/users/${editingUser.value.id}`, {
+      employee_name: editingUser.value.employee_name,
+      mobile_number: editingUser.value.mobile_number,
+      department_id: editingUser.value.department_id,
+    });
+
+    // Update roles
+    await api.post(`/users/${editingUser.value.id}/assign-roles`, {
+      role_ids: editUserRoles.value
+    });
+
+    const toast = await toastController.create({
+      message: 'User updated successfully',
+      duration: 2000,
+      color: 'success'
+    });
+    await toast.present();
+
+    showEditModal.value = false;
+    await loadUsers();
+  } catch (error: any) {
+    const toast = await toastController.create({
+      message: error.response?.data?.message || 'Failed to update user',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
+  } finally {
+    await loading.dismiss();
+  }
 };
 
 const toggleRole = (roleId: number) => {
@@ -389,5 +586,13 @@ onMounted(async () => {
   gap: 4px;
   flex-wrap: wrap;
   margin-top: 4px;
+}
+
+.add-user-button {
+  font-weight: 600;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  text-transform: none;
+  letter-spacing: 0.3px;
 }
 </style>

@@ -22,9 +22,28 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
+        $currentUser = auth()->user();
         $query = User::with(['roles', 'department']);
 
-        // Filter by department
+        // Department Admin: Only see users in their department(s)
+        if ($currentUser->hasRole('department_admin') && !$currentUser->hasRole('superadmin')) {
+            $accessibleDepartmentIds = $currentUser->getAccessibleDepartmentIds();
+            
+            if (empty($accessibleDepartmentIds)) {
+                // No departments accessible, return empty
+                return response()->json(['data' => [], 'total' => 0]);
+            }
+            
+            // Filter to only users in accessible departments
+            $query->whereIn('department_id', $accessibleDepartmentIds);
+            
+            // Exclude superadmins from view
+            $query->whereDoesntHave('roles', function($q) {
+                $q->where('slug', 'superadmin');
+            });
+        }
+
+        // Filter by department (if specified in request)
         if ($request->has('department_id')) {
             $query->where('department_id', $request->department_id);
         }
@@ -74,7 +93,7 @@ class UserController extends Controller
             'mobile_number' => 'nullable|string|unique:users,mobile_number',
             'empbadge_number' => 'nullable|string|unique:users,empbadge_number',
             'department_id' => 'nullable|exists:departments,id',
-            'password' => 'required|string|min:8',
+            'password' => 'required|string|min:4',
             'role_ids' => 'required|array',
             'role_ids.*' => 'exists:roles,id',
         ]);
@@ -108,6 +127,32 @@ class UserController extends Controller
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
+        $currentUser = auth()->user();
+
+        // Department Admin restrictions
+        if ($currentUser->hasRole('department_admin') && !$currentUser->hasRole('superadmin')) {
+            // Cannot edit superadmins
+            if ($user->hasRole('superadmin')) {
+                return response()->json([
+                    'error' => 'You do not have permission to edit this user.'
+                ], 403);
+            }
+
+            // Cannot edit other department admins
+            if ($user->hasRole('department_admin') && $user->id !== $currentUser->id) {
+                return response()->json([
+                    'error' => 'You cannot edit other department administrators.'
+                ], 403);
+            }
+
+            // Can only edit users in their accessible departments
+            $accessibleDepartmentIds = $currentUser->getAccessibleDepartmentIds();
+            if (!in_array($user->department_id, $accessibleDepartmentIds)) {
+                return response()->json([
+                    'error' => 'You can only edit users in your department.'
+                ], 403);
+            }
+        }
 
         $request->validate([
             'employee_name' => 'sometimes|string',
@@ -131,6 +176,39 @@ class UserController extends Controller
     }
 
     /**
+     * Check if current user can manage target user (for dept admins)
+     */
+    private function canManageUser($targetUser)
+    {
+        $currentUser = auth()->user();
+
+        // Superadmin can manage everyone
+        if ($currentUser->hasRole('superadmin')) {
+            return true;
+        }
+
+        // Department admin restrictions
+        if ($currentUser->hasRole('department_admin')) {
+            // Cannot manage superadmins
+            if ($targetUser->hasRole('superadmin')) {
+                return false;
+            }
+
+            // Cannot manage other department admins
+            if ($targetUser->hasRole('department_admin') && $targetUser->id !== $currentUser->id) {
+                return false;
+            }
+
+            // Can only manage users in accessible departments
+            $accessibleDepartmentIds = $currentUser->getAccessibleDepartmentIds();
+            return in_array($targetUser->department_id, $accessibleDepartmentIds);
+        }
+
+        // Regular users cannot manage anyone
+        return false;
+    }
+
+    /**
      * Reset user password to "1234"
      * 
      * POST /api/users/{id}/reset-password
@@ -138,6 +216,13 @@ class UserController extends Controller
     public function resetPassword($id)
     {
         $user = User::findOrFail($id);
+
+        // Check authorization
+        if (!$this->canManageUser($user)) {
+            return response()->json([
+                'error' => 'You do not have permission to reset this user\'s password.'
+            ], 403);
+        }
 
         $user->update([
             'password' => Hash::make('1234'),
@@ -380,6 +465,13 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
 
+        // Check authorization
+        if (!$this->canManageUser($user)) {
+            return response()->json([
+                'error' => 'You do not have permission to suspend this user.'
+            ], 403);
+        }
+
         $request->validate([
             'reason' => 'nullable|string|max:500',
         ]);
@@ -429,6 +521,13 @@ class UserController extends Controller
             return response()->json(['error' => 'Cannot retire your own account'], 400);
         }
 
+        // Check authorization
+        if (!$this->canManageUser($user)) {
+            return response()->json([
+                'error' => 'You do not have permission to retire this user.'
+            ], 403);
+        }
+
         $request->validate([
             'reason' => 'nullable|string|max:500',
         ]);
@@ -454,6 +553,13 @@ class UserController extends Controller
         // Prevent terminating yourself
         if ($user->id === auth()->id()) {
             return response()->json(['error' => 'Cannot terminate your own account'], 400);
+        }
+
+        // Check authorization
+        if (!$this->canManageUser($user)) {
+            return response()->json([
+                'error' => 'You do not have permission to terminate this user.'
+            ], 403);
         }
 
         $request->validate([
