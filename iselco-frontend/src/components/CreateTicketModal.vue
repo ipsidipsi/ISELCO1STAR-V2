@@ -213,7 +213,7 @@ const emit = defineEmits<{
 
 const metadataStore = useMetadataStore()
 const { createTicket } = useTickets()
-const { showSuccess, showError } = useNotification()
+const { showSuccess, showError, showConfirm } = useNotification()
 
 const form = ref({
   title: '',
@@ -346,6 +346,31 @@ function clearSelectedUser() {
 
 async function handleSubmit() {
   if (!validateForm()) return
+  
+  // Show confirmation dialog
+  const selectedDepartment = departments.value.find(d => d.id === Number(form.value.department_id))
+  const selectedCategory = categories.value.find(c => c.id === Number(form.value.category_id))
+  
+  const confirmationMessage = `You are about to create a new ticket with the following details:
+
+Title: ${form.value.title}
+Department: ${selectedDepartment?.name}
+Category: ${selectedCategory?.name}
+Priority: ${selectedPriorityInfo.value?.name}
+${selectedUser.value ? `Assigned To: ${selectedUser.value.employee_name || selectedUser.value.username}` : 'Assigned To: Auto-assignment'}
+
+Do you want to proceed?`
+
+  const result = await showConfirm(
+    'Create New Ticket?',
+    confirmationMessage,
+    'Create Ticket',
+    'Cancel'
+  )
+
+  if (!result.isConfirmed) {
+    return // User cancelled
+  }
   
   loading.value = true
   
