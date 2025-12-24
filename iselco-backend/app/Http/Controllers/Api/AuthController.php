@@ -54,10 +54,14 @@ class AuthController extends Controller
         // Create Sanctum token
         $token = $user->createToken('mobile-app')->plainTextToken;
 
+        // Load all active roles (permanent + temporary)
+        $allActiveRoles = $user->allActiveRoles()->load('permissions');
+
         return response()->json([
             'user' => $user,
             'token' => $token,
             'must_change_password' => $user->must_change_password,
+            'all_roles' => $allActiveRoles, // Include temporary roles at login
         ]);
     }
 

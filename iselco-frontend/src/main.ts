@@ -39,6 +39,9 @@ import './theme/variables.css';
 /* Tailwind CSS */
 import './styles/tailwind.css';
 
+/* SweetAlert2 CSS */
+import 'sweetalert2/dist/sweetalert2.min.css';
+
 // Initialize Pinia
 const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)

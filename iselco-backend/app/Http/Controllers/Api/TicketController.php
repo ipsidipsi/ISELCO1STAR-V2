@@ -152,7 +152,6 @@ class TicketController extends Controller
                 'status_to' => 'new',
                 'user_id' => $request->user()->id,
                 'notes' => 'Ticket created',
-                'created_at' => now(),
             ]);
 
             // If assigned, update status and timeline
@@ -168,7 +167,6 @@ class TicketController extends Controller
                     'status_to' => 'assigned',
                     'user_id' => $request->user()->id,
                     'notes' => 'Assigned to user',
-                    'created_at' => now(),
                 ]);
             }
 

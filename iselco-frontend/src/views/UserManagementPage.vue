@@ -473,44 +473,64 @@ const createUser = async () => {
 };
 
 const openUserMenu = async (user: any, event: Event) => {
+  // Check if user has temporary roles
+  const hasTempRoles = (user.temporaryRoles || user.temporary_roles || []).length > 0;
+  
+  // Build buttons array conditionally
+  const buttons = [
+    {
+      text: 'Edit',
+      icon: 'create-outline',
+      handler: () => viewUser(user)
+    },
+    {
+      text: 'Reset Password',
+      icon: 'key-outline',
+      handler: () => resetUserPassword(user.id)
+    }
+  ];
+
+  // Add either Assign or Revoke based on temp role status
+  if (hasTempRoles) {
+    buttons.push({
+      text: 'Revoke Temporary Role',
+      icon: 'close-circle-outline',
+      handler: () => revokeTemporaryRole(user)
+    });
+  } else {
+    buttons.push({
+      text: 'Assign Temporary Role',
+      icon: 'time-outline',
+      handler: () => openTempRoleModal(user)
+    });
+  }
+
+  // Add remaining buttons
+  buttons.push(
+    {
+      text: 'Suspend',
+      icon: lockClosed,
+      handler: () => suspendUser(user.id)
+    },
+    {
+      text: 'Retire',
+      icon: personRemove,
+      handler: () => retireUser(user.id)
+    },
+    {
+      text: 'Reactivate',
+      icon: checkmarkCircle,
+      handler: () => reactivateUser(user.id)
+    },
+    {
+      text: 'Cancel',
+      role: 'cancel'
+    }
+  );
+
   const actionSheet = await actionSheetController.create({
     header: user.employee_name || user.username,
-    buttons: [
-      {
-        text: 'Edit',
-        icon: 'create-outline',
-        handler: () => viewUser(user)
-      },
-      {
-        text: 'Reset Password',
-        icon: 'key-outline',
-        handler: () => resetUserPassword(user.id)
-      },
-      {
-        text: 'Assign Temporary Role',
-        icon: 'time-outline',
-        handler: () => openTempRoleModal(user)
-      },
-      {
-        text: 'Suspend',
-        icon: lockClosed,
-        handler: () => suspendUser(user.id)
-      },
-      {
-        text: 'Retire',
-        icon: personRemove,
-        handler: () => retireUser(user.id)
-      },
-      {
-        text: 'Reactivate',
-        icon: checkmarkCircle,
-        handler: () => reactivateUser(user.id)
-      },
-      {
-        text: 'Cancel',
-        role: 'cancel'
-      }
-    ]
+    buttons: buttons
   });
 
   await actionSheet.present();
@@ -541,9 +561,18 @@ const assignTemporaryRole = async () => {
   await loading.present();
 
   try {
-    // Format the datetime to MySQL format (YYYY-MM-DD HH:MM:SS)
+    // Format the datetime to MySQL format in LOCAL timezone (not UTC)
     const expiryDate = new Date(tempRoleForm.value.expires_at);
-    const formattedExpiry = expiryDate.toISOString().slice(0, 19).replace('T', ' ');
+    
+    // Get local date/time components
+    const year = expiryDate.getFullYear();
+    const month = String(expiryDate.getMonth() + 1).padStart(2, '0');
+    const day = String(expiryDate.getDate()).padStart(2, '0');
+    const hours = String(expiryDate.getHours()).padStart(2, '0');
+    const minutes = String(expiryDate.getMinutes()).padStart(2, '0');
+    const seconds = String(expiryDate.getSeconds()).padStart(2, '0');
+    
+    const formattedExpiry = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 
     await api.post(`/users/${tempRoleUser.value.id}/assign-temporary-role`, {
       role_id: tempRoleForm.value.role_id,
@@ -566,6 +595,50 @@ const assignTemporaryRole = async () => {
     const toast = await toastController.create({
       message: errorMsg,
       duration: 5000,
+      color: 'danger'
+    });
+    await toast.present();
+  } finally {
+    await loading.dismiss();
+  }
+};
+
+const revokeTemporaryRole = async (user: any) => {
+  // Check if user has temporary roles first
+  const tempRoles = user.temporaryRoles || user.temporary_roles || [];
+  
+  if (tempRoles.length === 0) {
+    const toast = await toastController.create({
+      message: 'This user has no temporary roles to revoke',
+      duration: 2000,
+      color: 'warning'
+    });
+    await toast.present();
+    return;
+  }
+
+  const loading = await loadingController.create({ message: 'Revoking temporary roles...' });
+  await loading.present();
+
+  try {
+    // Revoke all temporary roles for this user
+    for (const tempRole of tempRoles) {
+      await api.delete(`/users/${user.id}/temporary-roles/${tempRole.id}`);
+    }
+
+    const toast = await toastController.create({
+      message: `Temporary role${tempRoles.length > 1 ? 's' : ''} revoked successfully`,
+      duration: 2000,
+      color: 'success'
+    });
+    await toast.present();
+
+    await loadUsers();
+  } catch (error: any) {
+    console.error('Revoke temporary role error:', error.response?.data);
+    const toast = await toastController.create({
+      message: error.response?.data?.message || 'Failed to revoke temporary role',
+      duration: 3000,
       color: 'danger'
     });
     await toast.present();

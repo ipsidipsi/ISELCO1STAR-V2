@@ -31,6 +31,21 @@
         </div>
 
         <template v-else>
+          <!-- Temporary Role Notification Banner -->
+          <div v-if="hasTemporaryRoles" class="temp-role-notification mb-6">
+            <div class="flex items-center p-4">
+              <ion-icon :icon="shieldCheckmarkOutline" class="text-3xl mr-3 text-white"></ion-icon>
+              <div class="flex-1">
+                <h3 class="text-lg font-bold text-white mb-1">🔑 Temporary Admin Access Active</h3>
+                <p class="text-sm text-orange-100">
+                  You have been granted <strong>{{ tempRoleName }}</strong> privileges
+                  <span v-if="tempRoleExpiry"> until {{ formatTempRoleExpiry }}</span>
+                </p>
+              </div>
+              <ion-icon :icon="timeOutline" class="text-2xl text-white pulsing"></ion-icon>
+            </div>
+          </div>
+
           <!-- Statistics Cards with glass effect -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <!-- Total Tickets -->
@@ -170,7 +185,8 @@ import {
 import {
   ticketOutline, logOutOutline, documentsOutline, personOutline,
   timeOutline, checkmarkCircleOutline, addCircleOutline, listOutline,
-  statsChartOutline, settingsOutline, chevronForwardOutline, peopleOutline
+  statsChartOutline, settingsOutline, chevronForwardOutline, peopleOutline,
+  shieldCheckmarkOutline
 } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 import { useTickets } from '@/composables/useTickets'
@@ -189,6 +205,35 @@ const isAdmin = computed(() => {
   return userRoles.some((role: any) => 
     role.slug === 'superadmin' || role.slug === 'department_admin'
   )
+})
+
+// Check if user has temporary roles
+const hasTemporaryRoles = computed(() => {
+  const userRoles = authStore.user?.roles || []
+  // Check if any role has a pivot.expires_at (indicating temporary role)
+  return userRoles.some((role: any) => role.pivot && role.pivot.expires_at)
+})
+
+const tempRoleName = computed(() => {
+  const userRoles = authStore.user?.roles || []
+  const tempRole = userRoles.find((role: any) => role.pivot && role.pivot.expires_at)
+  return tempRole?.name || ''
+})
+
+const tempRoleExpiry = computed(() => {
+  const userRoles = authStore.user?.roles || []
+  const tempRole = userRoles.find((role: any) => role.pivot && role.pivot.expires_at)
+  return tempRole?.pivot?.expires_at || null
+})
+
+const formatTempRoleExpiry = computed(() => {
+  if (!tempRoleExpiry.value) return ''
+  return new Date(tempRoleExpiry.value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 })
 
 onMounted(async () => {
@@ -420,6 +465,40 @@ function formatDate(date: string) {
   .glass-card,
   .glass-header {
     background: rgba(255, 255, 255, 0.95);
+  }
+}
+
+/* Temporary Role Notification Banner */
+.temp-role-notification {
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+  animation: slideInDown 0.5s ease-out;
+}
+
+.pulsing {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
   }
 }
 </style>

@@ -365,14 +365,17 @@ async function handleSubmit() {
     
     const ticket = await createTicket(ticketData)
     
-    // Show success notification with ticket number
+    // Emit created event first to refresh the ticket list
+    emit('created')
+    
+    // Close modal before showing toast to prevent interference
+    closeModal()
+    
+    // Show success notification with ticket number after modal is closed
     await showSuccess(
       'Ticket Created Successfully!',
       `Your ticket ${ticket.ticket_number} has been created and assigned priority: ${selectedPriorityInfo.value?.name}`
     )
-    
-    emit('created')
-    closeModal()
   } catch (error: any) {
     // Show error notification
     await showError(

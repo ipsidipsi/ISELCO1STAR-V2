@@ -66,7 +66,7 @@
             <div>
               <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Assigned To</p>
               <p class="text-base font-bold text-navy-700">
-                {{ ticket.assignedTo?.employee_name || ticket.assignedTo?.username || 'Unassigned' }}
+                {{ ticket.assigned_to?.employee_name || ticket.assigned_to?.username || 'Unassigned' }}
               </p>
             </div>
           </div>
