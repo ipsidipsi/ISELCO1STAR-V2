@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import api from '@/services/api'
+import echo from '@/services/echo'
 import { useNotification } from '@/composables/useNotification'
 
 export interface Comment {
@@ -100,12 +101,45 @@ export function useComments(ticketId: number) {
     }
 
     /**
+     * Subscribe to real-time comment events for this ticket
+     */
+    function subscribeToTicket() {
+        const channel = echo.private(`ticket.${ticketId}`)
+
+        // Listen for new comments
+        channel.listen('.comment.created', (event: { comment: Comment }) => {
+            addCommentFromEvent(event.comment)
+        })
+
+        // Listen for updated comments
+        channel.listen('.comment.updated', (event: { comment: Comment }) => {
+            updateCommentFromEvent(event.comment)
+        })
+
+        // Listen for deleted comments
+        channel.listen('.comment.deleted', (event: { commentId: number }) => {
+            deleteCommentFromEvent(event.commentId)
+        })
+
+        console.log(`✅ Subscribed to ticket.${ticketId}`)
+    }
+
+    /**
+     * Unsubscribe from real-time comment events
+     */
+    function unsubscribeFromTicket() {
+        echo.leave(`ticket.${ticketId}`)
+        console.log(`❌ Unsubscribed from ticket.${ticketId}`)
+    }
+
+    /**
      * Add a comment from WebSocket event
      */
     function addCommentFromEvent(comment: Comment) {
         // Check if comment already exists (avoid duplicates)
         if (!comments.value.find(c => c.id === comment.id)) {
             comments.value.push(comment)
+            console.log('📩 New comment received:', comment.id)
         }
     }
 
@@ -116,6 +150,7 @@ export function useComments(ticketId: number) {
         const index = comments.value.findIndex(c => c.id === comment.id)
         if (index !== -1) {
             comments.value[index] = comment
+            console.log('✏️ Comment updated:', comment.id)
         }
     }
 
@@ -124,6 +159,7 @@ export function useComments(ticketId: number) {
      */
     function deleteCommentFromEvent(commentId: number) {
         comments.value = comments.value.filter(c => c.id !== commentId)
+        console.log('🗑️ Comment deleted:', commentId)
     }
 
     return {
@@ -134,6 +170,8 @@ export function useComments(ticketId: number) {
         addComment,
         updateComment,
         deleteComment,
+        subscribeToTicket,
+        unsubscribeFromTicket,
         addCommentFromEvent,
         updateCommentFromEvent,
         deleteCommentFromEvent,
