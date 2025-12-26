@@ -23,6 +23,23 @@
     <ion-content :fullscreen="true" class="bg-gray-50">
       <div class="p-4 max-w-7xl mx-auto">
         
+        <!-- Active Filters Banner -->
+        <div v-if="hasActiveFilters" class="bg-teal-50 border-l-4 border-teal-500 p-4 mb-4 rounded-r-lg shadow-sm">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <ion-icon :icon="filterOutline" class="text-teal-600 text-xl"></ion-icon>
+              <span class="font-semibold text-teal-900">{{ getFilterDescription() }}</span>
+            </div>
+            <button 
+              @click="clearFilters" 
+              class="px-4 py-2 bg-white border border-teal-300 rounded-lg hover:bg-teal-50 transition-colors font-medium text-teal-700 flex items-center gap-2"
+            >
+              <ion-icon :icon="closeOutline" class="text-lg"></ion-icon>
+              Clear Filters
+            </button>
+          </div>
+        </div>
+        
         <!-- Filters -->
         <div class="bg-white rounded-xl shadow-sm p-4 mb-4">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -142,28 +159,46 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   IonPage, IonHeader, IonToolbar, IonContent, IonButton,
   IonIcon, IonSpinner, IonSearchbar
 } from '@ionic/vue'
 import {
   arrowBackOutline, addOutline, chevronForwardOutline,
-  personOutline, businessOutline, documentTextOutline
+  personOutline, businessOutline, documentTextOutline,
+  filterOutline, closeOutline
 } from 'ionicons/icons'
 import { useTickets } from '@/composables/useTickets'
 
+const route = useRoute()
 const router = useRouter()
 const { tickets, loading, loadTickets } = useTickets()
 
 const searchQuery = ref('')
 const statusFilter = ref('')
 const sortBy = ref('newest')
+const activeFilters = ref<Record<string, any>>({})
+
+const hasActiveFilters = computed(() => {
+  return Object.keys(route.query).length > 0
+})
 
 onMounted(async () => {
-  await loadTickets()
+  applyFiltersFromQuery()
+  await loadTickets(activeFilters.value)
 })
+
+// Watch for query changes (back/forward navigation)
+watch(() => route.query, () => {
+  applyFiltersFromQuery()
+  loadTickets(activeFilters.value)
+})
+
+function applyFiltersFromQuery() {
+  activeFilters.value = { ...route.query }
+}
 
 function goBack() {
   router.push('/dashboard')
@@ -222,6 +257,40 @@ function isNewlyAssigned(ticket: any): boolean {
   const hoursSinceAssigned = (now - assignedTime) / (1000 * 60 * 60)
   
   return hoursSinceAssigned < 24 // New if assigned within last 24 hours
+}
+
+function getFilterDescription(): string {
+  const q = route.query
+  
+  if (q.requested_by_me === 'true') {
+    return 'Showing tickets you created'
+  }
+  
+  if (q.assigned_to_me === 'true') {
+    if (q.status === 'in_progress') {
+      return 'Showing tickets you are working on'
+    }
+    if (q.status === 'resolved') {
+      return 'Showing tickets you resolved'
+    }
+    if (q.exclude_status === 'in_progress') {
+      return 'Showing tickets assigned to you (not in progress)'
+    }
+  }
+  
+  if (q.status) {
+    const statuses = String(q.status).split(',')
+    if (statuses.some(s => ['new', 'seen', 'reopened'].includes(s))) {
+      return 'Showing pending tickets'
+    }
+    return `Showing ${statuses.map(s => s.replace('_', ' ')).join(', ')} tickets`
+  }
+  
+  return 'Filtered view'
+}
+
+function clearFilters() {
+  router.push({ path: '/tickets' })
 }
 
 function formatDate(date: string) {

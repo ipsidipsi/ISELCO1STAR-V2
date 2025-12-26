@@ -47,9 +47,14 @@ class TicketController extends Controller
             }
         }
 
-        // Filter by status
+        // Filter by status (supports comma-separated values)
         if ($request->has('status')) {
-            $query->where('status', $request->status);
+            $statuses = explode(',', $request->status);
+            if (count($statuses) > 1) {
+                $query->whereIn('status', $statuses);
+            } else {
+                $query->where('status', $request->status);
+            }
         }
 
         // Filter by department (only if superadmin or dept admin accessing their own departments)
