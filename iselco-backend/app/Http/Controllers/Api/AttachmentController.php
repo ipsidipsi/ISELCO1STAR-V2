@@ -56,6 +56,28 @@ class AttachmentController extends Controller
                 'uploaded_by' => $request->user()->id, // Fixed: was uploaded_by_user_id
             ]);
 
+            // Load uploader relationship
+            $attachment->load('uploader');
+
+            // Determine ticket ID and comment ID for broadcasting
+            $ticketId = null;
+            $commentId = null;
+
+            if ($request->attachable_type === 'App\Models\Comment') {
+                $comment = \App\Models\Comment::find($request->attachable_id);
+                if ($comment) {
+                    $ticketId = $comment->ticket_id;
+                    $commentId = $comment->id;
+                }
+            } elseif ($request->attachable_type === 'App\Models\Ticket') {
+                $ticketId = $request->attachable_id;
+            }
+
+            // Broadcast attachment to other users watching this ticket
+            if ($ticketId) {
+                broadcast(new \App\Events\AttachmentAdded($attachment, $ticketId, $commentId))->toOthers();
+            }
+
             return response()->json($attachment, 201);
 
         } catch (\Exception $e) {

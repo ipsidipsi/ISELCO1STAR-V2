@@ -130,6 +130,11 @@ export function useComments(ticketId: number) {
             deleteCommentFromEvent(event.commentId)
         })
 
+        // Listen for attachments added to comments
+        channel.listen('.attachment.added', (event: { attachment: any; comment_id: number }) => {
+            addAttachmentToComment(event.comment_id, event.attachment)
+        })
+
         console.log(`✅ Subscribed to ticket.${ticketId}`)
     }
 
@@ -180,6 +185,20 @@ export function useComments(ticketId: number) {
     function deleteCommentFromEvent(commentId: number) {
         comments.value = comments.value.filter(c => c.id !== commentId)
         console.log('🗑️ Comment deleted:', commentId)
+    }
+
+    /**
+     * Add attachment to comment from WebSocket event
+     */
+    function addAttachmentToComment(commentId: number, attachment: any) {
+        const comment = comments.value.find(c => c.id === commentId)
+        if (comment) {
+            if (!comment.attachments) {
+                comment.attachments = []
+            }
+            comment.attachments.push(attachment)
+            console.log('📎 Attachment added to comment:', commentId, attachment.file_name)
+        }
     }
 
     return {
