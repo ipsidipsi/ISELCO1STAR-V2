@@ -26,7 +26,52 @@
         </div>
 
         <!-- Message text -->
-        <p class="message-text">{{ comment.message }}</p>
+        <p v-if="comment.message" class="message-text">{{ comment.message }}</p>
+
+        <!-- Attachments -->
+        <div v-if="comment.attachments && comment.attachments.length > 0" class="attachments-container">
+          <div
+            v-for="attachment in comment.attachments"
+            :key="attachment.id"
+            class="attachment-item"
+          >
+            <ion-icon 
+              :icon="getIcon(attachment.mime_type)" 
+              class="attachment-icon"
+            ></ion-icon>
+            <div class="attachment-info">
+              <span class="attachment-name" :title="attachment.file_name">
+                {{ truncateFileName(attachment.file_name) }}
+              </span>
+              <span class="attachment-size">{{ formatSize(attachment.file_size) }}</span>
+            </div>
+            <div class="attachment-actions">
+              <button
+                v-if="isImage(attachment.mime_type)"
+                @click="handlePreview(attachment)"
+                class="attach-btn preview"
+                title="Preview"
+              >
+                <ion-icon :icon="eyeOutline"></ion-icon>
+              </button>
+              <button
+                @click="handleDownload(attachment)"
+                class="attach-btn download"
+                title="Download"
+              >
+                <ion-icon :icon="downloadOutline"></ion-icon>
+              </button>
+              <button
+                v-if="canDeleteAttachment(attachment)"
+                @click="handleDeleteAttachment(attachment)"
+                class="attach-btn delete"
+                title="Delete"
+              >
+                <ion-icon :icon="trashOutline"></ion-icon>
+              </button>
+            </div>
+          </div>
+        </div>
 
         <!-- Timestamp and edited indicator -->
         <div class="message-footer">
@@ -63,8 +108,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { IonIcon } from '@ionic/vue'
-import { createOutline, trashOutline } from 'ionicons/icons'
+import { 
+  createOutline, 
+  trashOutline, 
+  downloadOutline, 
+  eyeOutline,
+  imageOutline,
+  documentTextOutline,
+  documentOutline,
+  gridOutline,
+  archiveOutline,
+  documentAttachOutline
+} from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
+import { useAttachments } from '@/composables/useAttachments'
+import { useNotification } from '@/composables/useNotification'
 import type { Comment } from '@/composables/useComments'
 
 const props = defineProps<{
@@ -77,6 +135,8 @@ defineEmits<{
 }>()
 
 const authStore = useAuthStore()
+const { downloadAttachment, deleteAttachment, getFileIcon, formatFileSize, isImage } = useAttachments()
+const { showConfirm } = useNotification()
 
 const isMine = computed(() => {
   return props.comment.user_id === authStore.user?.id
@@ -91,6 +151,12 @@ const canDelete = computed(() => {
   const isAdmin = authStore.user?.roles?.some(r => r.slug === 'admin')
   return isOwner || isAdmin
 })
+
+function canDeleteAttachment(attachment: any): boolean {
+  const isUploader = attachment.uploaded_by === authStore.user?.id
+  const isSuperadmin = authStore.user?.roles?.some((r: any) => r.name === 'superadmin') || false
+  return isUploader || isSuperadmin
+}
 
 function getUserInitials(user: any) {
   const name = user.employee_name || user.username
@@ -123,6 +189,57 @@ function formatTime(date: string) {
     minute: '2-digit',
     year: then.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
   })
+}
+
+function getIcon(mimeType: string) {
+  const iconName = getFileIcon(mimeType)
+  const icons: Record<string, any> = {
+    'image-outline': imageOutline,
+    'document-text-outline': documentTextOutline,
+    'document-outline': documentOutline,
+    'grid-outline': gridOutline,
+    'archive-outline': archiveOutline,
+    'document-attach-outline': documentAttachOutline,
+  }
+  return icons[iconName] || documentAttachOutline
+}
+
+function formatSize(bytes: number) {
+  return formatFileSize(bytes)
+}
+
+function truncateFileName(name: string, maxLength: number = 25): string {
+  if (name.length <= maxLength) return name
+  const ext = name.split('.').pop() || ''
+  const nameWithoutExt = name.substring(0, name.length - ext.length - 1)
+  const truncated = nameWithoutExt.substring(0, maxLength - ext.length - 4)
+  return `${truncated}...${ext}`
+}
+
+async function handleDownload(attachment: any) {
+  await downloadAttachment(attachment)
+}
+
+function handlePreview(attachment: any) {
+  // Open image in a new window/tab for preview
+  const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000'
+  const imageUrl = `${baseUrl}/storage/${attachment.file_path}`
+  window.open(imageUrl, '_blank')
+}
+
+async function handleDeleteAttachment(attachment: any) {
+  const result = await showConfirm(
+    'Delete Attachment?',
+    `Are you sure you want to delete "${attachment.file_name}"?`,
+    'Delete',
+    'Cancel'
+  )
+  
+  if (result.isConfirmed) {
+    await deleteAttachment(attachment.id)
+    // Refresh the page or emit an event to reload comments
+    window.location.reload()
+  }
 }
 </script>
 
@@ -303,6 +420,124 @@ function formatTime(date: string) {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Attachments */
+.attachments-container {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  transition: background 0.2s ease;
+}
+
+.bubble-theirs .attachment-item {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.attachment-item:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.bubble-theirs .attachment-item:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.attachment-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.bubble-mine .attachment-icon {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.bubble-theirs .attachment-icon {
+  color: #14B8A6;
+}
+
+.attachment-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.attachment-name {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bubble-mine .attachment-name {
+  color: white;
+}
+
+.bubble-theirs .attachment-name {
+  color: #1F2937;
+}
+
+.attachment-size {
+  font-size: 0.6875rem;
+  opacity: 0.7;
+}
+
+.attachment-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.attach-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.bubble-mine .attach-btn {
+  color: white;
+}
+
+.bubble-theirs .attach-btn {
+  color: #1F2937;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.attach-btn:hover {
+  transform: scale(1.1);
+}
+
+.attach-btn.preview:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.attach-btn.download:hover {
+  background: rgba(20, 184, 166, 0.3);
+}
+
+.attach-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #EF4444;
 }
 
 /* Responsive */

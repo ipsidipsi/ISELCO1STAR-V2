@@ -45,6 +45,7 @@
 
     <!-- Comment Input -->
     <CommentInput
+      ref="commentInputRef"
       :submitting="submitting"
       :edit-mode="editMode"
       :edit-text="editText"
@@ -59,6 +60,7 @@ import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { IonIcon, IonSpinner } from '@ionic/vue'
 import { chatbubblesOutline, arrowDownOutline } from 'ionicons/icons'
 import { useComments, type Comment } from '@/composables/useComments'
+import { useAttachments } from '@/composables/useAttachments'
 import { useNotification } from '@/composables/useNotification'
 import CommentItem from './CommentItem.vue'
 import CommentInput from './CommentInput.vue'
@@ -86,6 +88,7 @@ const editingCommentId = ref<number | null>(null)
 const editText = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
 const showScrollButton = ref(false)
+const commentInputRef = ref<{ clearFiles: () => void } | null>(null)
 
 onMounted(async () => {
   await loadComments()
@@ -122,17 +125,70 @@ watch(() => comments.value.length, async (newLength, oldLength) => {
   }
 })
 
-async function handleSubmit(message: string) {
+const uploadingFiles = ref(false)
+const uploadProgress = ref(0)
+
+async function handleSubmit(data: { message: string; files: any[] }) {
   if (editMode.value && editingCommentId.value) {
-    // Update existing comment
-    await updateComment(editingCommentId.value, message)
+    // Update existing comment (files not supported in edit mode)
+    await updateComment(editingCommentId.value, data.message)
     await showSuccess('Message Updated', 'Your message has been updated')
     cancelEdit()
   } else {
-    // Add new comment
-    await addComment(message)
-    await nextTick()
-    scrollToBottom() // Auto-scroll after sending
+    try {
+      // Send message (can be empty if there are files)
+      const comment = await addComment(data.message || '')
+      
+      // Upload files if any
+      if (data.files.length > 0 && comment) {
+        const { uploadFile } = useAttachments()
+        
+        // Upload each file and track progress
+        for (let i = 0; i < data.files.length; i++) {
+          const fileItem = data.files[i]
+          
+          try {
+            // Mark as uploading (hide ready checkmark, show progress)
+            fileItem.ready = false
+            fileItem.uploading = true
+            fileItem.progress = 0
+            fileItem.failed = false
+            
+            // Upload the file
+            const result = await uploadFile(fileItem.file, 'App\\Models\\Comment', comment.id)
+            
+            if (result) {
+              // Mark as uploaded with progress
+              fileItem.progress = 100
+              fileItem.uploading = false
+              fileItem.uploaded = true
+            } else {
+              // Upload returned null (validation failed)
+              fileItem.uploading = false
+              fileItem.failed = true
+            }
+          } catch (error) {
+            // Upload threw an error
+            fileItem.uploading = false
+            fileItem.failed = true
+          }
+        }
+        
+        // Files stay visible with checkmarks - user can see completion status
+        // They'll be cleared when user starts typing a new message
+      }
+      
+      // Reload comments to get updated attachments
+      // This ensures the current user sees the attachments
+      await loadComments()
+      
+      await nextTick()
+      scrollToBottom() // Auto-scroll after sending
+    } catch (error) {
+      uploadingFiles.value = false
+      uploadProgress.value = 0
+      throw error
+    }
   }
 }
 

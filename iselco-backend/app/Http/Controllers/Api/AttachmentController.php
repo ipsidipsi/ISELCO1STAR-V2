@@ -20,11 +20,18 @@ class AttachmentController extends Controller
      * 
      * POST /api/attachments
      * Body: multipart/form-data with file, attachable_type, attachable_id
+     * 
+     * Allowed types: images, PDF, documents (doc, docx, xls, xlsx), zip, rar
      */
     public function store(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|max:25600', // 25MB max
+            'file' => [
+                'required',
+                'file',
+                'max:25600', // 25MB max
+                'mimes:jpg,jpeg,png,gif,bmp,webp,pdf,doc,docx,xls,xlsx,txt,zip,rar'
+            ],
             'attachable_type' => 'required|string',
             'attachable_id' => 'required|integer',
         ]);
@@ -32,8 +39,8 @@ class AttachmentController extends Controller
         try {
             $file = $request->file('file');
             
-            // Generate unique filename
-            $filename = time() . '_' . $file->getClientOriginalName();
+            // Generate unique filename with timestamp
+            $filename = time() . '_' . uniqid() . '_' . $file->getClientOriginalName();
             
             // Store file in storage/app/public/attachments
             $path = $file->storeAs('attachments', $filename, 'public');
@@ -46,13 +53,17 @@ class AttachmentController extends Controller
                 'file_path' => $path,
                 'file_size' => $file->getSize(),
                 'mime_type' => $file->getMimeType(),
-                'uploaded_by_user_id' => $request->user()->id,
+                'uploaded_by' => $request->user()->id, // Fixed: was uploaded_by_user_id
             ]);
 
             return response()->json($attachment, 201);
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'File upload failed'], 500);
+            \Log::error('File upload failed: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'File upload failed',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -77,10 +88,20 @@ class AttachmentController extends Controller
      * Delete attachment
      * 
      * DELETE /api/attachments/{id}
+     * 
+     * Only uploader or superadmin can delete
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $attachment = Attachment::findOrFail($id);
+
+        // Authorization: only uploader or superadmin can delete
+        if ($attachment->uploaded_by !== $request->user()->id && !$request->user()->isSuperadmin()) {
+            return response()->json([
+                'error' => 'Unauthorized',
+                'message' => 'You can only delete your own attachments'
+            ], 403);
+        }
 
         // Delete file from storage
         if (Storage::disk('public')->exists($attachment->file_path)) {

@@ -18,6 +18,15 @@ export interface Comment {
         username: string
         employee_name: string | null
     }
+    attachments?: Array<{
+        id: number
+        file_name: string
+        file_path: string
+        file_size: number
+        mime_type: string
+        uploaded_by: number
+        created_at: string
+    }>
 }
 
 export function useComments(ticketId: number) {

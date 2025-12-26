@@ -42,14 +42,14 @@ class CommentController extends Controller
         $ticket = Ticket::findOrFail($ticketId);
 
         $request->validate([
-            'message' => 'required|string',
+            'message' => 'nullable|string', // Changed to nullable to allow file-only comments
             'is_internal' => 'sometimes|boolean',
         ]);
 
         $comment = Comment::create([
             'ticket_id' => $ticketId,
             'user_id' => $request->user()->id,
-            'message' => $request->message,
+            'message' => $request->message ?: '', // Use empty string if no message
             'is_internal' => $request->is_internal ?? false,
             'read_by' => json_encode([]), // Empty read receipts initially
         ]);
