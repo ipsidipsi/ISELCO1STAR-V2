@@ -52,8 +52,8 @@ export function useComments(ticketId: number) {
             const response = await api.post(`/tickets/${ticketId}/comments`, { message })
             const newComment = response.data
 
-            // Add to local list immediately (optimistic update)
-            comments.value.push(newComment)
+            // Don't add immediately - let the broadcast event handle it
+            // This prevents duplicates since broadcast() always fires
 
             return newComment
         } catch (error: any) {
@@ -137,9 +137,20 @@ export function useComments(ticketId: number) {
      */
     function addCommentFromEvent(comment: Comment) {
         // Check if comment already exists (avoid duplicates)
-        if (!comments.value.find(c => c.id === comment.id)) {
+        const existing = comments.value.find(c => c.id === comment.id)
+
+        console.log('📩 Broadcast event received:', {
+            commentId: comment.id,
+            exists: !!existing,
+            currentCount: comments.value.length,
+            allIds: comments.value.map(c => c.id)
+        })
+
+        if (!existing) {
             comments.value.push(comment)
-            console.log('📩 New comment received:', comment.id)
+            console.log('✅ Comment added from broadcast')
+        } else {
+            console.log('⏭️ Comment already exists, skipping')
         }
     }
 
