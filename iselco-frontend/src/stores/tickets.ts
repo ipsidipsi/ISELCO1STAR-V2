@@ -23,14 +23,11 @@ export const useTicketStore = defineStore('tickets', () => {
     const currentTicket = ref<Ticket | null>(null)
     const loading = ref(false)
     const stats = ref({
-        total: 0,
-        new: 0,
-        assigned: 0,
+        pending: 0,
+        assigned_to_me: 0,
         in_progress: 0,
         resolved: 0,
-        closed: 0,
-        my_assigned: 0,
-        my_created: 0,
+        my_requests: 0,
     })
 
     // Computed
@@ -72,33 +69,10 @@ export const useTicketStore = defineStore('tickets', () => {
 
     async function fetchStats() {
         try {
-            // Fetch all tickets to calculate stats (now with role-based filtering)
-            const response = await api.get('/tickets', { params: { all: 'true' } })
-            const allTickets = response.data
-
-            // Fetch tickets specifically assigned to the current user
-            let myAssignedTickets = []
-            try {
-                const assignedResponse = await api.get('/tickets/assigned-to-me')
-                myAssignedTickets = assignedResponse.data
-            } catch (assignedError) {
-                console.warn('Failed to fetch assigned tickets, using fallback calculation:', assignedError)
-                // Fallback: calculate from allTickets if endpoint fails
-                myAssignedTickets = allTickets.filter((t: Ticket) => t.assignedTo !== null)
-            }
-
-            stats.value = {
-                total: allTickets.length,
-                new: allTickets.filter((t: Ticket) => t.status === 'new').length,
-                assigned: allTickets.filter((t: Ticket) => t.status === 'assigned').length,
-                in_progress: allTickets.filter((t: Ticket) => t.status === 'in_progress').length,
-                resolved: allTickets.filter((t: Ticket) => t.status === 'resolved').length,
-                closed: allTickets.filter((t: Ticket) => t.status === 'closed').length,
-                my_assigned: myAssignedTickets.length,
-                my_created: allTickets.filter((t: Ticket) => t.requestor !== null).length,
-            }
-
-            return stats.value
+            // Use the new dedicated stats endpoint
+            const response = await api.get('/tickets/stats')
+            stats.value = response.data
+            return response.data
         } catch (error) {
             console.error('Fetch stats error:', error)
             throw error

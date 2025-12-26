@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
     //------------------------------------------------------------
     // Tickets - Special endpoints (MUST come before apiResource)
     //------------------------------------------------------------
+    Route::get('/tickets/stats', [TicketController::class, 'stats']);
     Route::get('/tickets/assigned-to-me', [TicketController::class, 'assignedToMe']);
     
     //------------------------------------------------------------

@@ -67,6 +67,21 @@ class TicketController extends Controller
             $query->where('requestor_id', $request->created_by);
         }
 
+        // Filter: Assigned to me
+        if ($request->boolean('assigned_to_me')) {
+            $query->where('assigned_to_id', $request->user()->id);
+        }
+
+        // Filter: Requested by me
+        if ($request->boolean('requested_by_me')) {
+            $query->where('requestor_id', $request->user()->id);
+        }
+
+        // Filter: Exclude status
+        if ($request->has('exclude_status')) {
+            $query->where('status', '!=', $request->exclude_status);
+        }
+
         // Search by ticket number or title
         if ($request->has('search')) {
             $query->where(function ($q) use ($request) {
@@ -448,6 +463,30 @@ class TicketController extends Controller
             DB::rollBack();
             return response()->json(['error' => 'Failed to reopen ticket'], 500);
         }
+    }
+
+    /**
+     * Get ticket statistics for dashboard
+     * 
+     * GET /api/tickets/stats
+     */
+    public function stats(Request $request)
+    {
+        $user = $request->user();
+        
+        return response()->json([
+            'pending' => Ticket::whereIn('status', ['new', 'seen', 'reopened'])->count(),
+            'assigned_to_me' => Ticket::where('assigned_to_id', $user->id)
+                ->where('status', '!=', 'in_progress')
+                ->count(),
+            'in_progress' => Ticket::where('assigned_to_id', $user->id)
+                ->where('status', 'in_progress')
+                ->count(),
+            'resolved' => Ticket::where('assigned_to_id', $user->id)
+                ->where('status', 'resolved')
+                ->count(),
+            'my_requests' => Ticket::where('requestor_id', $user->id)->count(),
+        ]);
     }
 
     /**

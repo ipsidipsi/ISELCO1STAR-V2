@@ -30,7 +30,8 @@
                   class="px-3 py-1 rounded-full text-sm font-bold uppercase"
                   :class="getStatusClass(ticket.status)"
                 >
-                  {{ ticket.status }}
+                  {{ ticket.status.replace('_', ' ') }}
+                  <span v-if="isNewlyAssigned(ticket)" class="ml-1">• NEW</span>
                 </span>
                 <span
                   class="px-3 py-1 rounded-full text-sm font-bold uppercase"
@@ -252,13 +253,25 @@ const canReassign = computed(() => isAdmin.value && ticket.value?.status !== 'cl
 function getStatusClass(status: string) {
   const classes = {
     new: 'bg-blue-100 text-blue-700',
+    seen: 'bg-gray-200 text-gray-700',
     assigned: 'bg-cyan-100 text-cyan-700',
     in_progress: 'bg-yellow-100 text-yellow-700',
     resolved: 'bg-purple-100 text-purple-700',
     closed: 'bg-green-100 text-green-700',
-    reopened: 'bg-orange-100 text-orange-700',
+    reopened: 'bg-red-100 text-red-700',
   }
   return classes[status as keyof typeof classes] || 'bg-gray-100 text-gray-700'
+}
+
+function isNewlyAssigned(ticket: any): boolean {
+  if (ticket.status !== 'assigned') return false
+  if (!ticket.assigned_at) return true // If no timestamp, assume new
+  
+  const assignedTime = new Date(ticket.assigned_at).getTime()
+  const now = Date.now()
+  const hoursSinceAssigned = (now - assignedTime) / (1000 * 60 * 60)
+  
+  return hoursSinceAssigned < 24 // New if assigned within last 24 hours
 }
 
 function getPriorityClass(priority: string) {

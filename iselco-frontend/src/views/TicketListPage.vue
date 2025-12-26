@@ -89,6 +89,7 @@
                     :class="getStatusClass(ticket.status)"
                   >
                     {{ formatStatus(ticket.status) }}
+                    <span v-if="isNewlyAssigned(ticket)" class="ml-1">• NEW</span>
                   </span>
                   <span 
                     v-if="ticket.priority"
@@ -191,11 +192,12 @@ async function handleFilter() {
 function getStatusClass(status: string) {
   const classes: Record<string, string> = {
     'new': 'bg-blue-100 text-blue-700',
+    'seen': 'bg-gray-200 text-gray-700',
     'assigned': 'bg-cyan-100 text-cyan-700',
     'in_progress': 'bg-yellow-100 text-yellow-700',
     'resolved': 'bg-purple-100 text-purple-700',
     'closed': 'bg-green-100 text-green-700',
-    'reopened': 'bg-orange-100 text-orange-700',
+    'reopened': 'bg-red-100 text-red-700',
   }
   return classes[status] || 'bg-gray-100 text-gray-700'
 }
@@ -209,6 +211,17 @@ function getPriorityClass(level: number) {
 
 function formatStatus(status: string) {
   return status.replace(/_/g, ' ').toUpperCase()
+}
+
+function isNewlyAssigned(ticket: any): boolean {
+  if (ticket.status !== 'assigned') return false
+  if (!ticket.assigned_at) return true // If no timestamp, assume new
+  
+  const assignedTime = new Date(ticket.assigned_at).getTime()
+  const now = Date.now()
+  const hoursSinceAssigned = (now - assignedTime) / (1000 * 60 * 60)
+  
+  return hoursSinceAssigned < 24 // New if assigned within last 24 hours
 }
 
 function formatDate(date: string) {

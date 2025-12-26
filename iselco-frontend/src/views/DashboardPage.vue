@@ -47,13 +47,13 @@
           </div>
 
           <!-- Statistics Cards with glass effect -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <!-- Total Tickets -->
-            <div class="glass-card card-blue">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+            <!-- Pending Tickets -->
+            <div @click="navigateToTickets('pending')" class="glass-card card-blue clickable">
               <div class="flex items-center justify-between">
                 <div class="flex-1">
-                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Total Tickets</p>
-                  <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.total }}</p>
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Pending Tickets</p>
+                  <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.pending }}</p>
                 </div>
                 <div class="icon-glow icon-blue">
                   <ion-icon :icon="documentsOutline" class="text-2xl text-blue-600"></ion-icon>
@@ -62,11 +62,11 @@
             </div>
 
             <!-- Assigned to Me -->
-            <div class="glass-card card-teal">
+            <div @click="navigateToTickets('assigned')" class="glass-card card-teal clickable">
               <div class="flex items-center justify-between">
                 <div class="flex-1">
                   <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Assigned to Me</p>
-                  <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.my_assigned }}</p>
+                  <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.assigned_to_me }}</p>
                 </div>
                 <div class="icon-glow icon-teal">
                   <ion-icon :icon="personOutline" class="text-2xl text-teal-600"></ion-icon>
@@ -75,7 +75,7 @@
             </div>
 
             <!-- In Progress -->
-            <div class="glass-card card-yellow">
+            <div @click="navigateToTickets('in_progress')" class="glass-card card-yellow clickable">
               <div class="flex items-center justify-between">
                 <div class="flex-1">
                   <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">In Progress</p>
@@ -88,7 +88,7 @@
             </div>
 
             <!-- Resolved -->
-            <div class="glass-card card-green">
+            <div @click="navigateToTickets('resolved')" class="glass-card card-green clickable">
               <div class="flex items-center justify-between">
                 <div class="flex-1">
                   <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Resolved</p>
@@ -96,6 +96,19 @@
                 </div>
                 <div class="icon-glow icon-green">
                   <ion-icon :icon="checkmarkCircleOutline" class="text-2xl text-green-600"></ion-icon>
+                </div>
+              </div>
+            </div>
+
+            <!-- My Requests -->
+            <div @click="navigateToTickets('my_requests')" class="glass-card card-purple clickable">
+              <div class="flex items-center justify-between">
+                <div class="flex-1">
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">My Requests</p>
+                  <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.my_requests || 0 }}</p>
+                </div>
+                <div class="icon-glow icon-purple">
+                  <ion-icon :icon="createOutline" class="text-2xl text-purple-600"></ion-icon>
                 </div>
               </div>
             </div>
@@ -150,7 +163,8 @@
                       class="px-2 py-1 text-xs font-medium rounded-full"
                       :class="getStatusClass(ticket.status)"
                     >
-                      {{ ticket.status.toUpperCase() }}
+                      {{ ticket.status.toUpperCase().replace('_', ' ') }}
+                      <span v-if="isNewlyAssigned(ticket)" class="ml-1">• NEW</span>
                     </span>
                   </div>
                   <h3 class="font-medium text-navy-700 mt-1">{{ ticket.title }}</h3>
@@ -186,7 +200,7 @@ import {
   ticketOutline, logOutOutline, documentsOutline, personOutline,
   timeOutline, checkmarkCircleOutline, addCircleOutline, listOutline,
   statsChartOutline, settingsOutline, chevronForwardOutline, peopleOutline,
-  shieldCheckmarkOutline
+  shieldCheckmarkOutline, createOutline
 } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 import { useTickets } from '@/composables/useTickets'
@@ -281,9 +295,22 @@ function goToSettings() {
   console.log('Navigate to settings')
 }
 
+function navigateToTickets(filter: string) {
+  const routes: Record<string, any> = {
+    pending: { path: '/tickets', query: { status: 'new,seen,reopened' } },
+    assigned: { path: '/tickets', query: { assigned_to_me: 'true', exclude_status: 'in_progress' } },
+    in_progress: { path: '/tickets', query: { assigned_to_me: 'true', status: 'in_progress' } },
+    resolved: { path: '/tickets', query: { assigned_to_me: 'true', status: 'resolved' } },
+    my_requests: { path: '/tickets', query: { requested_by_me: 'true' } },
+  }
+  
+  router.push(routes[filter])
+}
+
 function getStatusClass(status: string) {
   const classes: Record<string, string> = {
-    'new': 'bg-gray-200 text-gray-700',
+    'new': 'bg-blue-100 text-blue-700',
+    'seen': 'bg-gray-200 text-gray-700',
     'assigned': 'bg-blue-100 text-blue-700',
     'in_progress': 'bg-yellow-100 text-yellow-700',
     'resolved': 'bg-green-100 text-green-700',
@@ -291,6 +318,17 @@ function getStatusClass(status: string) {
     'reopened': 'bg-red-100 text-red-700',
   }
   return classes[status] || 'bg-gray-100 text-gray-700'
+}
+
+function isNewlyAssigned(ticket: any): boolean {
+  if (ticket.status !== 'assigned') return false
+  if (!ticket.assigned_at) return true // If no timestamp, assume new
+  
+  const assignedTime = new Date(ticket.assigned_at).getTime()
+  const now = Date.now()
+  const hoursSinceAssigned = (now - assignedTime) / (1000 * 60 * 60)
+  
+  return hoursSinceAssigned < 24 // New if assigned within last 24 hours
 }
 
 function formatDate(date: string) {
@@ -335,6 +373,20 @@ function formatDate(date: string) {
   box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.25);
 }
 
+/* Clickable Card Styles */
+.glass-card.clickable {
+  cursor: pointer;
+}
+
+.glass-card.clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px 0 rgba(31, 38, 135, 0.3);
+}
+
+.glass-card.clickable:active {
+  transform: translateY(-2px);
+}
+
 /* Stat Card Gradients */
 .card-blue {
   border-left: 4px solid #3B82F6;
@@ -354,6 +406,11 @@ function formatDate(date: string) {
 .card-green {
   border-left: 4px solid #10B981;
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(255, 255, 255, 0.75) 100%);
+}
+
+.card-purple {
+  border-left: 4px solid #9333EA;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(255, 255, 255, 0.75) 100%);
 }
 
 /* Icon Glow Effect */
@@ -387,6 +444,11 @@ function formatDate(date: string) {
 .icon-green {
   background: rgba(16, 185, 129, 0.15);
   box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.icon-purple {
+  background: rgba(147, 51, 234, 0.15);
+  box-shadow: 0 4px 15px rgba(147, 51, 234, 0.3);
 }
 
 .icon-glow:hover {
