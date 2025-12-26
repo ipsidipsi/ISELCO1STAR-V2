@@ -241,8 +241,16 @@ const isAdmin = computed(() => authStore.user?.roles?.some(r => r.slug === 'admi
 const isRequestor = computed(() => ticket.value?.requestor_id === authStore.user?.id)
 const isAssignee = computed(() => ticket.value?.assigned_to_id === authStore.user?.id)
 
-const canPerformActions = computed(() => isAdmin.value || isRequestor.value || isAssignee.value)
-const canAccept = computed(() => (isAdmin.value || !ticket.value?.assigned_to_id) && ticket.value?.status === 'new')
+const canPerformActions = computed(() => {
+  // Show actions if user is admin, requestor, assignee, OR can accept unassigned tickets
+  return isAdmin.value || isRequestor.value || isAssignee.value || !ticket.value?.assigned_to_id
+})
+const canAccept = computed(() => {
+  // Show accept button for unassigned tickets (new, seen, or reopened) - but not for requestor
+  return !ticket.value?.assigned_to_id && 
+         ['new', 'seen', 'reopened'].includes(ticket.value?.status || '') && 
+         !isRequestor.value
+})
 const canStart = computed(() => (isAdmin.value || isAssignee.value) && ticket.value?.status === 'assigned')
 const canResolve = computed(() => (isAdmin.value || isAssignee.value) && ticket.value?.status === 'in_progress')
 const canVerify = computed(() => (isAdmin.value || isRequestor.value) && ticket.value?.status === 'resolved')

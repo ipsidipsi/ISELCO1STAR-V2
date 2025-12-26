@@ -39,10 +39,11 @@ class TicketController extends Controller
                 $accessibleDepartmentIds = $user->getAccessibleDepartmentIds();
                 $query->whereIn('department_id', $accessibleDepartmentIds);
             } else {
-                // Normal user: only tickets they created or are assigned to
+                // Normal user: tickets they created, assigned to them, OR any unassigned tickets
                 $query->where(function ($q) use ($user) {
-                    $q->where('requestor_id', $user->id)
-                      ->orWhere('assigned_to_id', $user->id);
+                    $q->where('requestor_id', $user->id)      // Tickets they created
+                      ->orWhere('assigned_to_id', $user->id)  // Tickets assigned to them
+                      ->orWhereNull('assigned_to_id');        // Any unassigned tickets (can accept)
                 });
             }
         }
@@ -145,6 +146,14 @@ class TicketController extends Controller
             'assigned_to_id' => 'nullable|exists:users,id',
         ]);
 
+        // Prevent users from assigning tickets to themselves
+        if ($request->assigned_to_id && $request->assigned_to_id == $request->user()->id) {
+            return response()->json([
+                'error' => 'You cannot assign a ticket to yourself',
+                'message' => 'Tickets must be assigned to someone other than the requestor.'
+            ], 403);
+        }
+
         DB::beginTransaction();
         try {
             // Generate ticket number: TKT-YYYYMMDD-XXXX
@@ -238,6 +247,14 @@ class TicketController extends Controller
     {
         $ticket = Ticket::findOrFail($id);
         $user = $request->user();
+
+        // Prevent ticket owner from accepting their own ticket
+        if ($ticket->requestor_id === $user->id) {
+            return response()->json([
+                'error' => 'You cannot accept your own ticket',
+                'message' => 'Tickets must be assigned to someone other than the requestor.'
+            ], 403);
+        }
 
         DB::beginTransaction();
         try {
