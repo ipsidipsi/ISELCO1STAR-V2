@@ -42,6 +42,15 @@ export function useTickets() {
         }
     }
 
+    interface TicketStats {
+        pending: number
+        assigned_to_me: number
+        in_progress: number
+        pending_verification: number
+        closed: number
+        my_requests: number
+    }
+
     async function createTicket(data: any) {
         loading.value = true
         error.value = ''

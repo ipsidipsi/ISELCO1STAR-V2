@@ -203,7 +203,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons,
-  IonButton, IonIcon, IonSpinner, IonModal
+  IonButton, IonIcon, IonSpinner, IonModal, alertController
 } from '@ionic/vue'
 import {
   arrowBackOutline, checkmarkCircleOutline, playCircleOutline, checkmarkDoneOutline,
@@ -215,7 +215,6 @@ import { useAuthStore } from '@/stores/auth'
 import CommentSection from '@/components/CommentSection.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
 import TimelineList from '@/components/TimelineList.vue'
-import Swal from 'sweetalert2'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -254,7 +253,11 @@ const canAccept = computed(() => {
          ['new', 'seen', 'reopened'].includes(ticket.value?.status || '') && 
          !isRequestor.value
 })
-const canStart = computed(() => (isAdmin.value || isAssignee.value) && ticket.value?.status === 'assigned')
+const canStart = computed(() => {
+  // Can start if assigned or reopened (and is admin/assignee)
+  return (isAdmin.value || isAssignee.value) && 
+         (ticket.value?.status === 'assigned' || ticket.value?.status === 'reopened')
+})
 const canResolve = computed(() => (isAdmin.value || isAssignee.value) && ticket.value?.status === 'in_progress')
 const canVerify = computed(() => (isAdmin.value || isRequestor.value) && ticket.value?.status === 'resolved')
 const canReject = computed(() => (isAdmin.value || isRequestor.value) && ticket.value?.status === 'resolved')
@@ -307,41 +310,79 @@ function formatDate(date: string) {
 
 // Action handlers
 async function handleResolve() {
-  const { value: notes } = await Swal.fire({
-    title: 'Mark as Resolved',
-    input: 'textarea',
-    inputLabel: 'Resolution Notes (Optional)',
-    inputPlaceholder: 'Describe what was done to resolve this issue...',
-    showCancelButton: true,
-    confirmButtonText: 'Mark Resolved',
-    confirmButtonColor: '#14B8A6',
-    cancelButtonColor: '#6B7280',
+  const alert = await alertController.create({
+    header: 'Mark as Resolved',
+    message: 'Please provide resolution notes (optional)',
+    inputs: [
+      {
+        name: 'notes',
+        type: 'textarea',
+        placeholder: 'Describe what was done to resolve this issue...',
+        attributes: {
+          rows: 4,
+        },
+      },
+    ],
+    buttons: [
+      {
+        text: 'Cancel',
+        role: 'cancel',
+      },
+      {
+        text: 'Mark Resolved',
+        role: 'confirm',
+      },
+    ],
   })
 
-  if (notes !== undefined) {
-    await resolveTicket(notes || '')
+  await alert.present()
+  const { data, role } = await alert.onDidDismiss()
+
+  if (role === 'confirm') {
+    await resolveTicket(data?.values?.notes || '')
   }
 }
 
 async function handleReject() {
-  const { value: reason } = await Swal.fire({
-    title: 'Reject Solution',
-    input: 'textarea',
-    inputLabel: 'Reason for Rejection',
-    inputPlaceholder: 'Explain why this solution is not acceptable...',
-    showCancelButton: true,
-    confirmButtonText: 'Reject & Reopen',
-    confirmButtonColor: '#F59E0B',
-    cancelButtonColor: '#6B7280',
-    inputValidator: (value) => {
-      if (!value) {
-        return 'You must provide a reason for rejection'
-      }
-    }
+  const alert = await alertController.create({
+    header: 'Reject Solution',
+    message: 'Please explain why this solution is not acceptable',
+    inputs: [
+      {
+        name: 'reason',
+        type: 'textarea',
+        placeholder: 'Explain why this solution is not acceptable...',
+        attributes: {
+          rows: 4,
+          required: true,
+        },
+      },
+    ],
+    buttons: [
+      {
+        text: 'Cancel',
+        role: 'cancel',
+      },
+      {
+        text: 'Reject & Reopen',
+        role: 'confirm',
+      },
+    ],
   })
 
-  if (reason) {
-    await rejectTicket(reason)
+  await alert.present()
+  const { data, role } = await alert.onDidDismiss()
+
+  if (role === 'confirm' && data?.values?.reason) {
+    await rejectTicket(data.values.reason)
+  } else if (role === 'confirm' && !data?.values?.reason) {
+    // Show error if no reason provided
+    const errorAlert = await alertController.create({
+      header: 'Error',
+      message: 'You must provide a reason for rejection',
+      buttons: ['OK'],
+    })
+    await errorAlert.present()
   }
 }
 </script>

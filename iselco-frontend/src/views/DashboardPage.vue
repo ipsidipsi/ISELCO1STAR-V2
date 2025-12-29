@@ -87,16 +87,23 @@
               </div>
             </div>
 
-            <!-- Resolved -->
-            <div @click="navigateToTickets('resolved')" class="glass-card card-green clickable">
-              <div class="flex items-center justify-between">
-                <div class="flex-1">
-                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Resolved</p>
-                  <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.resolved }}</p>
-                </div>
-                <div class="icon-glow icon-green">
-                  <ion-icon :icon="checkmarkCircleOutline" class="text-2xl text-green-600"></ion-icon>
-                </div>
+            <!-- Pending Verification Card -->
+            <div @click="navigateToTickets('pending_verification')" class="glass-card card-purple clickable">
+              <ion-icon :icon="timeOutline" class="text-purple-600 text-5xl mb-3"></ion-icon>
+              <div>
+                <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Pending Verification</p>
+                <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.pending_verification || 0 }}</p>
+                <p class="text-xs text-gray-600 mt-1">Waiting for approval</p>
+              </div>
+            </div>
+
+            <!-- Closed Card (Completed) -->
+            <div @click="navigateToTickets('closed')" class="glass-card card-green clickable">
+              <ion-icon :icon="checkmarkDoneCircleOutline" class="text-green-600 text-5xl mb-3"></ion-icon>
+              <div>
+                <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Completed</p>
+                <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.closed || 0 }}</p>
+                <p class="text-xs text-gray-600 mt-1">Successfully closed</p>
               </div>
             </div>
 
@@ -200,7 +207,7 @@ import {
   ticketOutline, logOutOutline, documentsOutline, personOutline,
   timeOutline, checkmarkCircleOutline, addCircleOutline, listOutline,
   statsChartOutline, settingsOutline, chevronForwardOutline, peopleOutline,
-  shieldCheckmarkOutline, createOutline
+  shieldCheckmarkOutline, createOutline, checkmarkDoneCircleOutline
 } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 import { useTickets } from '@/composables/useTickets'
@@ -298,9 +305,10 @@ function goToSettings() {
 function navigateToTickets(filter: string) {
   const routes: Record<string, any> = {
     pending: { path: '/tickets', query: { status: 'new,seen,reopened' } },
-    assigned: { path: '/tickets', query: { assigned_to_me: 'true', exclude_status: 'in_progress' } },
+    assigned: { path: '/tickets', query: { assigned_to_me: 'true', exclude_status: 'in_progress,closed' } },
     in_progress: { path: '/tickets', query: { assigned_to_me: 'true', status: 'in_progress' } },
-    resolved: { path: '/tickets', query: { assigned_to_me: 'true', status: 'resolved' } },
+    pending_verification: { path: '/tickets', query: { assigned_to_me: 'true', status: 'resolved' } },
+    closed: { path: '/tickets', query: { assigned_to_me: 'true', status: 'closed' } },
     my_requests: { path: '/tickets', query: { requested_by_me: 'true' } },
   }
   

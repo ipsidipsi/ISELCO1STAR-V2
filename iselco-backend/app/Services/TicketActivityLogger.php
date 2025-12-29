@@ -11,6 +11,14 @@ use App\Models\Attachment;
 class TicketActivityLogger
 {
     /**
+     * Get user display name (employee_name or username fallback)
+     */
+    private static function getUserName(User $user): string
+    {
+        return $user->employee_name ?: $user->username;
+    }
+
+    /**
      * Log ticket creation
      */
     public static function logCreated(Ticket $ticket, User $user): void
@@ -19,7 +27,7 @@ class TicketActivityLogger
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'ticket_created',
-            'description' => "{$user->employee_name} created this ticket",
+            'description' => self::getUserName($user) . " created this ticket",
             'metadata' => [
                 'status' => $ticket->status,
                 'priority' => $ticket->priority?->name,
@@ -39,7 +47,7 @@ class TicketActivityLogger
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'status_changed',
-            'description' => "{$user->employee_name} changed status from {$oldStatusFormatted} to {$newStatusFormatted}",
+            'description' => self::getUserName($user) . " changed status from {$oldStatusFormatted} to {$newStatusFormatted}",
             'metadata' => [
                 'old_status' => $oldStatus,
                 'new_status' => $newStatus,
@@ -56,10 +64,10 @@ class TicketActivityLogger
             'ticket_id' => $ticket->id,
             'user_id' => $actor->id,
             'activity_type' => 'assigned',
-            'description' => "{$actor->employee_name} assigned this ticket to {$assignee->employee_name}",
+            'description' => self::getUserName($actor) . " assigned this ticket to " . self::getUserName($assignee),
             'metadata' => [
                 'assignee_id' => $assignee->id,
-                'assignee_name' => $assignee->employee_name,
+                'assignee_name' => self::getUserName($assignee),
             ],
         ]);
     }
@@ -73,7 +81,7 @@ class TicketActivityLogger
             'ticket_id' => $ticket->id,
             'user_id' => $actor->id,
             'activity_type' => 'reassigned',
-            'description' => "{$actor->employee_name} reassigned from {$oldAssignee->employee_name} to {$newAssignee->employee_name}",
+            'description' => self::getUserName($actor) . " reassigned from " . self::getUserName($oldAssignee) . " to " . self::getUserName($newAssignee),
             'metadata' => [
                 'old_assignee_id' => $oldAssignee->id,
                 'new_assignee_id' => $newAssignee->id,
@@ -90,7 +98,7 @@ class TicketActivityLogger
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'started',
-            'description' => "{$user->employee_name} started working on this ticket",
+            'description' => self::getUserName($user) . " started working on this ticket",
         ]);
     }
 
@@ -99,7 +107,7 @@ class TicketActivityLogger
      */
     public static function logResolved(Ticket $ticket, User $user, ?string $notes = null): void
     {
-        $description = "{$user->employee_name} marked this ticket as resolved";
+        $description = self::getUserName($user) . " marked this ticket as resolved";
         if ($notes) {
             $description .= " with notes: \"{$notes}\"";
         }
@@ -122,7 +130,7 @@ class TicketActivityLogger
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'verified',
-            'description' => "{$user->employee_name} verified and closed this ticket",
+            'description' => self::getUserName($user) . " verified and closed this ticket",
         ]);
     }
 
@@ -135,7 +143,7 @@ class TicketActivityLogger
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'reopened',
-            'description' => "{$user->employee_name} rejected the solution and reopened: \"{$reason}\"",
+            'description' => self::getUserName($user) . " rejected the solution and reopened: \"{$reason}\"",
             'metadata' => ['reason' => $reason],
         ]);
     }
@@ -149,7 +157,7 @@ class TicketActivityLogger
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'comment_added',
-            'description' => "{$user->employee_name} added a comment",
+            'description' => self::getUserName($user) . " added a comment",
             'metadata' => [
                 'comment_id' => $comment->id,
                 'comment_preview' => substr($comment->message, 0, 100),
@@ -168,7 +176,7 @@ class TicketActivityLogger
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'attachment_uploaded',
-            'description' => "{$user->employee_name} uploaded {$attachment->file_name} ({$fileSizeMB} MB)",
+            'description' => self::getUserName($user) . " uploaded {$attachment->file_name} ({$fileSizeMB} MB)",
             'metadata' => [
                 'attachment_id' => $attachment->id,
                 'file_name' => $attachment->file_name,

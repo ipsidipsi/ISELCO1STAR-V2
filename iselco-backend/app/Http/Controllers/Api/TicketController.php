@@ -338,7 +338,12 @@ class TicketController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => 'Failed to start ticket'], 500);
+            \Log::error('Start work failed: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            return response()->json([
+                'error' => 'Failed to start ticket',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -530,12 +535,16 @@ class TicketController extends Controller
             'pending' => Ticket::whereIn('status', ['new', 'seen', 'reopened'])->count(),
             'assigned_to_me' => Ticket::where('assigned_to_id', $user->id)
                 ->where('status', '!=', 'in_progress')
+                ->whereNotIn('status', ['closed'])
                 ->count(),
             'in_progress' => Ticket::where('assigned_to_id', $user->id)
                 ->where('status', 'in_progress')
                 ->count(),
-            'resolved' => Ticket::where('assigned_to_id', $user->id)
+            'pending_verification' => Ticket::where('assigned_to_id', $user->id)
                 ->where('status', 'resolved')
+                ->count(),
+            'closed' => Ticket::where('assigned_to_id', $user->id)
+                ->where('status', 'closed')
                 ->count(),
             'my_requests' => Ticket::where('requestor_id', $user->id)->count(),
         ]);

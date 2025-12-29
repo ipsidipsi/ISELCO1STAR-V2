@@ -26,7 +26,8 @@ export const useTicketStore = defineStore('tickets', () => {
         pending: 0,
         assigned_to_me: 0,
         in_progress: 0,
-        resolved: 0,
+        pending_verification: 0,
+        closed: 0,
         my_requests: 0,
     })
 
