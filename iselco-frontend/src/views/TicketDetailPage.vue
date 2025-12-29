@@ -166,15 +166,19 @@
         <!-- Comments Section -->
         <CommentSection :ticket-id="ticketId" />
 
-        <!-- Attachments Section (Placeholder) -->
+        <!-- Attachments Section -->
         <div class="glass-card p-6">
           <h3 class="text-lg font-bold text-navy-700 mb-4 flex items-center">
             <ion-icon :icon="attachOutline" class="mr-2 text-teal"></ion-icon>
             Attachments
           </h3>
-          <div class="text-center py-8 text-gray-500">
+          <AttachmentList 
+            v-if="ticket.attachments && ticket.attachments.length > 0"
+            :attachments="ticket.attachments"
+          />
+          <div v-else class="text-center py-8 text-gray-500">
             <ion-icon :icon="attachOutline" class="text-5xl mb-2 text-gray-300"></ion-icon>
-            <p>Attachments feature coming soon</p>
+            <p>No attachments</p>
           </div>
         </div>
       </div>
@@ -212,6 +216,7 @@ import {
 import { useTicketDetail } from '@/composables/useTicketDetail'
 import { useAuthStore } from '@/stores/auth'
 import CommentSection from '@/components/CommentSection.vue'
+import AttachmentList from '@/components/AttachmentList.vue'
 import Swal from 'sweetalert2'
 
 const route = useRoute()
