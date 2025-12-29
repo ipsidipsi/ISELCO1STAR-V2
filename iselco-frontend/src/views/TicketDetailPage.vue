@@ -151,16 +151,13 @@
           </div>
         </div>
 
-        <!-- Timeline/Status History (Placeholder) -->
+        <!-- Timeline/Status History -->
         <div class="glass-card p-6">
           <h3 class="text-lg font-bold text-navy-700 mb-4 flex items-center">
             <ion-icon :icon="timeOutline" class="mr-2 text-teal"></ion-icon>
             Timeline
           </h3>
-          <div class="text-center py-8 text-gray-500">
-            <ion-icon :icon="timeOutline" class="text-5xl mb-2 text-gray-300"></ion-icon>
-            <p>Timeline feature coming soon</p>
-          </div>
+          <TimelineList :ticket-id="ticketId" />
         </div>
 
         <!-- Comments Section -->
@@ -217,6 +214,7 @@ import { useTicketDetail } from '@/composables/useTicketDetail'
 import { useAuthStore } from '@/stores/auth'
 import CommentSection from '@/components/CommentSection.vue'
 import AttachmentList from '@/components/AttachmentList.vue'
+import TimelineList from '@/components/TimelineList.vue'
 import Swal from 'sweetalert2'
 
 const route = useRoute()

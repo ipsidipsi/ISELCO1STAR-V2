@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\TicketTimeline;
+use App\Services\TicketActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -183,8 +184,13 @@ class TicketController extends Controller
                 'notes' => 'Ticket created',
             ]);
 
+            // Log activity: Ticket created
+            TicketActivityLogger::logCreated($ticket, $request->user());
+
             // If assigned, update status and timeline
             if ($request->assigned_to_id) {
+                $assignedUser = \App\Models\User::find($request->assigned_to_id);
+                
                 $ticket->update([
                     'status' => 'assigned',
                     'assigned_at' => now(),
@@ -197,6 +203,10 @@ class TicketController extends Controller
                     'user_id' => $request->user()->id,
                     'notes' => 'Assigned to user',
                 ]);
+
+                // Log activity: Status changed and assigned
+                TicketActivityLogger::logStatusChange($ticket, 'new', 'assigned', $request->user());
+                TicketActivityLogger::logAssigned($ticket, $assignedUser, $request->user());
             }
 
             DB::commit();
@@ -277,6 +287,10 @@ class TicketController extends Controller
                 'created_at' => now(),
             ]);
 
+            // Log activity
+            TicketActivityLogger::logStatusChange($ticket, $oldStatus, 'assigned', $user);
+            TicketActivityLogger::logAssigned($ticket, $user, $user);
+
             DB::commit();
 
             return response()->json(['message' => 'Ticket accepted', 'ticket' => $ticket]);
@@ -313,6 +327,10 @@ class TicketController extends Controller
                 'notes' => 'Started working on ticket',
                 'created_at' => now(),
             ]);
+
+            // Log activity
+            TicketActivityLogger::logStarted($ticket, $request->user());
+            TicketActivityLogger::logStatusChange($ticket, $oldStatus, 'in_progress', $request->user());
 
             DB::commit();
 
@@ -356,6 +374,10 @@ class TicketController extends Controller
                 'created_at' => now(),
             ]);
 
+            // Log activity
+            TicketActivityLogger::logResolved($ticket, $request->user(), $request->notes);
+            TicketActivityLogger::logStatusChange($ticket, $oldStatus, 'resolved', $request->user());
+
             DB::commit();
 
             return response()->json(['message' => 'Ticket marked as resolved', 'ticket' => $ticket]);
@@ -392,6 +414,10 @@ class TicketController extends Controller
                 'notes' => 'Verified and closed',
                 'created_at' => now(),
             ]);
+
+            // Log activity
+            TicketActivityLogger::logVerified($ticket, $request->user());
+            TicketActivityLogger::logStatusChange($ticket, $oldStatus, 'closed', $request->user());
 
             DB::commit();
 
@@ -434,6 +460,10 @@ class TicketController extends Controller
                 'notes' => 'Rejected: ' . $request->reason,
                 'created_at' => now(),
             ]);
+
+            // Log activity
+            TicketActivityLogger::logReopened($ticket, $request->user(), $request->reason);
+            TicketActivityLogger::logStatusChange($ticket, $oldStatus, 'reopened', $request->user());
 
             DB::commit();
 
@@ -528,5 +558,22 @@ class TicketController extends Controller
             ->get();
 
         return response()->json($tickets);
+    }
+
+    /**
+     * Get ticket activities/timeline
+     * 
+     * GET /api/tickets/{id}/activities
+     */
+    public function getActivities($id)
+    {
+        $ticket = Ticket::findOrFail($id);
+
+        $activities = $ticket->activities()
+            ->with('user')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($activities);
     }
 }

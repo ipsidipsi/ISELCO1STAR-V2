@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attachment;
+use App\Models\Ticket;
+use App\Services\TicketActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -76,6 +78,14 @@ class AttachmentController extends Controller
             // Broadcast attachment to other users watching this ticket
             if ($ticketId) {
                 broadcast(new \App\Events\AttachmentAdded($attachment, $ticketId, $commentId))->toOthers();
+                
+                // Log activity for ticket-level attachments
+                if ($request->attachable_type === 'App\Models\Ticket') {
+                    $ticket = Ticket::find($ticketId);
+                    if ($ticket) {
+                        TicketActivityLogger::logAttachment($ticket, $attachment, $request->user());
+                    }
+                }
             }
 
             return response()->json($attachment, 201);

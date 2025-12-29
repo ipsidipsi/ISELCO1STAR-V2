@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Comment;
 use App\Models\Ticket;
+use App\Services\TicketActivityLogger;
 use Illuminate\Http\Request;
 
 /**
@@ -56,6 +57,11 @@ class CommentController extends Controller
 
         // Load relationships for response
         $comment->load(['user', 'attachments']);
+
+        // Log activity (only if comment has message, not just files)
+        if ($comment->message) {
+            TicketActivityLogger::logComment($ticket, $comment, $request->user());
+        }
 
         // Broadcast the new comment to other users viewing this ticket
         broadcast(new \App\Events\CommentCreated($comment, $ticketId))->toOthers();

@@ -56,6 +56,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/tickets/{id}/reject', [TicketController::class, 'reject']);
     Route::post('/tickets/{id}/reopen', [TicketController::class, 'reopen']);
     
+    // Tickets - Timeline/Activities
+    Route::get('/tickets/{id}/activities', [TicketController::class, 'getActivities']);
+    
     //------------------------------------------------------------
     // Comments (Real-time Chat)
     //------------------------------------------------------------
