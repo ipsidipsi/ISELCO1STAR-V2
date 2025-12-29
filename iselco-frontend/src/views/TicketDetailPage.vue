@@ -20,72 +20,77 @@
       <!-- Ticket Content -->
       <div v-else-if="ticket" class="max-w-6xl mx-auto space-y-4">
         
-        <!-- Ticket Header -->
-        <div class="glass-card p-6">
-          <div class="flex items-start justify-between mb-4">
-            <div class="flex-1">
-              <div class="flex items-center gap-2 mb-2">
-                <h1 class="text-2xl font-extrabold text-navy-700">{{ ticket.ticket_number }}</h1>
-                <span
-                  class="px-3 py-1 rounded-full text-sm font-bold uppercase"
-                  :class="getStatusClass(ticket.status)"
-                >
-                  {{ ticket.status.replace('_', ' ') }}
-                  <span v-if="isNewlyAssigned(ticket)" class="ml-1">• NEW</span>
-                </span>
-                <span
-                  class="px-3 py-1 rounded-full text-sm font-bold uppercase"
-                  :class="getPriorityClass(ticket.priority?.name)"
-                >
-                  {{ ticket.priority?.name }}
-                </span>
+        <!-- Collapsible Sections with Ionic Accordion -->
+        <ion-accordion-group :value="['details', 'timeline', 'comments']">
+          
+          <!-- Ticket Details Section -->
+          <ion-accordion value="details" class="glass-card mb-4">
+            <ion-item slot="header">
+              <ion-label>
+                <div class="flex items-center gap-2 mb-2">
+                  <h3 class="text-3xl font-extrabold text-navy-800">{{ ticket.ticket_number }}</h3>
+                  <span
+                    class="px-3 py-1 rounded-full text-xs font-bold uppercase"
+                    :class="getStatusClass(ticket.status)"
+                  >
+                    {{ ticket.status.replace('_', ' ') }}
+                  </span>
+                  <span
+                    class="px-2 py-1 rounded-full text-xs font-bold uppercase"
+                    :class="getPriorityClass(ticket.priority?.name)"
+                  >
+                    {{ ticket.priority?.name }}
+                  </span>
+                </div>
+                <!-- Custom class to force size override -->
+                <h4 class="ticket-title-custom mt-2">{{ ticket.title }}</h4>
+              </ion-label>
+            </ion-item>
+            <div slot="content" class="p-6">
+              <!-- Description -->
+              <div class="mb-6">
+                <p class="text-sm uppercase tracking-wide text-gray-600 font-semibold mb-2">Description</p>
+                <p class="text-base text-gray-800 leading-relaxed">{{ ticket.description }}</p>
               </div>
-              <h2 class="text-xl font-bold text-gray-900">{{ ticket.title }}</h2>
-            </div>
-          </div>
 
-          <!-- Description -->
-          <div class="mb-6">
-            <p class="text-sm uppercase tracking-wide text-gray-600 font-semibold mb-2">Description</p>
-            <p class="text-base text-gray-800 leading-relaxed">{{ ticket.description }}</p>
-          </div>
+              <!-- Ticket Info Grid -->
+              <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Department</p>
+                  <p class="text-base font-bold text-navy-700">{{ ticket.department?.name }}</p>
+                </div>
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Category</p>
+                  <p class="text-base font-bold text-navy-700">{{ ticket.category?.name }}</p>
+                </div>
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Requestor</p>
+                  <p class="text-base font-bold text-navy-700">{{ ticket.requestor?.employee_name || ticket.requestor?.username }}</p>
+                </div>
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Assigned To</p>
+                  <p class="text-base font-bold text-navy-700">
+                    {{ ticket.assigned_to?.employee_name || ticket.assigned_to?.username || 'Unassigned' }}
+                  </p>
+                </div>
+              </div>
 
-          <!-- Ticket Info Grid -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Department</p>
-              <p class="text-base font-bold text-navy-700">{{ ticket.department?.name }}</p>
+              <!-- Dates -->
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-200">
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Created</p>
+                  <p class="text-sm font-medium text-gray-700">{{ formatDate(ticket.created_at) }}</p>
+                </div>
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Updated</p>
+                  <p class="text-sm font-medium text-gray-700">{{ formatDate(ticket.updated_at) }}</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Category</p>
-              <p class="text-base font-bold text-navy-700">{{ ticket.category?.name }}</p>
-            </div>
-            <div>
-              <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Requestor</p>
-              <p class="text-base font-bold text-navy-700">{{ ticket.requestor?.employee_name || ticket.requestor?.username }}</p>
-            </div>
-            <div>
-              <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Assigned To</p>
-              <p class="text-base font-bold text-navy-700">
-                {{ ticket.assigned_to?.employee_name || ticket.assigned_to?.username || 'Unassigned' }}
-              </p>
-            </div>
-          </div>
+          </ion-accordion>
+        
+        </ion-accordion-group>
 
-          <!-- Dates -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-200">
-            <div>
-              <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Created</p>
-              <p class="text-sm font-medium text-gray-700">{{ formatDate(ticket.created_at) }}</p>
-            </div>
-            <div>
-              <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Updated</p>
-              <p class="text-sm font-medium text-gray-700">{{ formatDate(ticket.updated_at) }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Action Buttons -->
         <div class="glass-card p-6" v-if="canPerformActions">
           <h3 class="text-lg font-bold text-navy-700 mb-4">Actions</h3>
           <div class="flex flex-wrap gap-3">
@@ -151,33 +156,64 @@
           </div>
         </div>
 
-        <!-- Timeline/Status History -->
-        <div class="glass-card p-6">
-          <h3 class="text-lg font-bold text-navy-700 mb-4 flex items-center">
-            <ion-icon :icon="timeOutline" class="mr-2 text-teal"></ion-icon>
-            Timeline
-          </h3>
-          <TimelineList :ticket-id="ticketId" />
-        </div>
+        <!-- Collapsible Sections with Ionic Accordion -->
+        <ion-accordion-group :value="['timeline', 'comments']">
+          
+          <!-- Timeline Section -->
+          <ion-accordion value="timeline" class="glass-card mb-4">
+            <ion-item slot="header">
+              <ion-icon :icon="timeOutline" class="mr-3 text-teal text-2xl" slot="start"></ion-icon>
+              <ion-label>
+                <h3 class="text-2xl font-extrabold text-navy-800">Timeline</h3>
+                <p class="text-sm text-gray-600 font-medium">Activity history</p>
+              </ion-label>
+            </ion-item>
+            <div slot="content" class="p-4">
+              <TimelineList :ticket-id="ticketId" />
+            </div>
+          </ion-accordion>
 
-        <!-- Comments Section -->
-        <CommentSection :ticket-id="ticketId" />
+          <!-- Attachments Section -->
+          <ion-accordion value="attachments" class="glass-card mb-4">
+            <ion-item slot="header">
+              <ion-icon :icon="attachOutline" class="mr-3 text-teal text-2xl" slot="start"></ion-icon>
+              <ion-label>
+                <h3 class="text-2xl font-extrabold text-navy-800">Attachments</h3>
+                <p class="text-sm text-gray-600 font-medium">
+                  {{ ticket.attachments && ticket.attachments.length > 0 
+                    ? `${ticket.attachments.length} file(s)` 
+                    : 'No attachments' 
+                  }}
+                </p>
+              </ion-label>
+            </ion-item>
+            <div slot="content" class="p-4">
+              <AttachmentList 
+                v-if="ticket.attachments && ticket.attachments.length > 0"
+                :attachments="ticket.attachments"
+              />
+              <div v-else class="text-center py-8 text-gray-500">
+                <ion-icon :icon="attachOutline" class="text-5xl mb-2 text-gray-300"></ion-icon>
+                <p>No attachments</p>
+              </div>
+            </div>
+          </ion-accordion>
 
-        <!-- Attachments Section -->
-        <div class="glass-card p-6">
-          <h3 class="text-lg font-bold text-navy-700 mb-4 flex items-center">
-            <ion-icon :icon="attachOutline" class="mr-2 text-teal"></ion-icon>
-            Attachments
-          </h3>
-          <AttachmentList 
-            v-if="ticket.attachments && ticket.attachments.length > 0"
-            :attachments="ticket.attachments"
-          />
-          <div v-else class="text-center py-8 text-gray-500">
-            <ion-icon :icon="attachOutline" class="text-5xl mb-2 text-gray-300"></ion-icon>
-            <p>No attachments</p>
-          </div>
-        </div>
+          <!-- Comments Section -->
+          <ion-accordion value="comments" class="glass-card">
+            <ion-item slot="header">
+              <ion-icon :icon="chatbubblesOutline" class="mr-3 text-teal text-2xl" slot="start"></ion-icon>
+              <ion-label>
+                <h3 class="text-2xl font-extrabold text-navy-800">Comments</h3>
+                <p class="text-sm text-gray-600 font-medium">Discussion & updates</p>
+              </ion-label>
+            </ion-item>
+            <div slot="content">
+              <CommentSection :ticket-id="ticketId" />
+            </div>
+          </ion-accordion>
+
+        </ion-accordion-group>
       </div>
     </ion-content>
 
@@ -203,12 +239,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons,
-  IonButton, IonIcon, IonSpinner, IonModal, alertController
+  IonButton, IonIcon, IonSpinner, IonModal, IonAccordionGroup, 
+  IonAccordion, IonItem, IonLabel, alertController
 } from '@ionic/vue'
 import {
   arrowBackOutline, checkmarkCircleOutline, playCircleOutline, checkmarkDoneOutline,
   shieldCheckmarkOutline, closeCircleOutline, peopleOutline, timeOutline,
-  chatbubblesOutline, attachOutline
+  chatbubblesOutline, attachOutline, chevronDownOutline, chevronUpOutline
 } from 'ionicons/icons'
 import { useTicketDetail } from '@/composables/useTicketDetail'
 import { useAuthStore } from '@/stores/auth'
@@ -218,7 +255,9 @@ import TimelineList from '@/components/TimelineList.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
+
 const ticketId = Number(route.params.id)
+const showReassignModal = ref(false)
 
 const {
   ticket,
@@ -229,10 +268,7 @@ const {
   resolveTicket,
   verifyTicket,
   rejectTicket,
-  reassignTicket,
 } = useTicketDetail(ticketId)
-
-const showReassignModal = ref(false)
 
 onMounted(async () => {
   await loadTicket()
@@ -394,5 +430,32 @@ async function handleReject() {
   border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
+
+/* Force larger titles in accordion headers */
+ion-accordion h3.text-3xl {
+  font-size: 1.875rem !important; /* 30px */
+  line-height: 2.25rem !important;
+}
+
+ion-accordion h3.text-2xl {
+  font-size: 1.5rem !important; /* 24px */
+  line-height: 2rem !important;
+}
+
+/* Ensure label allows wrapping for large text */
+ion-accordion ion-item ion-label {
+  white-space: normal !important;
+  overflow: visible !important;
+}
+
+/* Specific override for ticket title inside accordion */
+.ticket-title-custom {
+  font-size: 1.5rem !important; /* 24px */
+  font-weight: 800 !important;
+  color: #1a202c !important; /* gray-900 */
+  margin-top: 0.5rem !important;
+  line-height: 1.4 !important;
+  display: block !important;
 }
 </style>
