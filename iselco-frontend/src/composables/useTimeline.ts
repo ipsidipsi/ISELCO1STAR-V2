@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import api from '@/services/api'
 import {
     documentTextOutline,
@@ -12,6 +12,13 @@ import {
     addCircleOutline,
     swapHorizontalOutline
 } from 'ionicons/icons'
+
+// Add Echo type definition shim
+declare global {
+    interface Window {
+        Echo: any
+    }
+}
 
 export interface Activity {
     id: number
@@ -39,6 +46,9 @@ export function useTimeline(ticketId: number) {
         try {
             const response = await api.get(`/tickets/${ticketId}/activities`)
             activities.value = response.data
+
+            // Initialize real-time listener after loading
+            subscribeToRealTime()
         } catch (err: any) {
             error.value = err.message || 'Failed to load timeline'
             console.error('Timeline load error:', err)
@@ -46,6 +56,28 @@ export function useTimeline(ticketId: number) {
             loading.value = false
         }
     }
+
+    function subscribeToRealTime() {
+        if (window.Echo) {
+            console.log(`Subscribing to ticket.${ticketId} activities`)
+            window.Echo.private(`ticket.${ticketId}`)
+                .listen('.ticket.activity', (e: any) => {
+                    console.log('Real-time activity received:', e.activity)
+                    // Add new activity to the top of the list
+                    // Prevent duplicates just in case
+                    if (!activities.value.find(a => a.id === e.activity.id)) {
+                        activities.value.unshift(e.activity)
+                    }
+                })
+        }
+    }
+
+    // Cleanup listener when component using this composable is unmounted
+    onUnmounted(() => {
+        if (window.Echo) {
+            window.Echo.private(`ticket.${ticketId}`).stopListening('.ticket.activity')
+        }
+    })
 
     function getActivityIcon(type: string) {
         const icons: Record<string, string> = {

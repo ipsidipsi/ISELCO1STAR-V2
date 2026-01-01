@@ -1,5 +1,6 @@
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useTicketStore } from '@/stores/tickets'
+import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
 import api from '@/services/api'
 
@@ -10,7 +11,8 @@ import api from '@/services/api'
  */
 export function useTicketDetail(ticketId: number) {
     const ticketStore = useTicketStore()
-    const { showSuccess, showError, showConfirm, showLoading, close } = useNotification()
+    const authStore = useAuthStore()
+    const { showSuccess, showError, showConfirm, showLoading, close, showInfo } = useNotification()
 
     const loading = ref(false)
     const ticket = ref<any>(null)
@@ -23,6 +25,10 @@ export function useTicketDetail(ticketId: number) {
         try {
             const response = await api.get(`/tickets/${ticketId}`)
             ticket.value = response.data
+
+            // Start listening for updates
+            subscribeToUpdates()
+
             return response.data
         } catch (error: any) {
             await showError('Failed to Load Ticket', error.message || 'Could not load ticket details')
@@ -31,6 +37,56 @@ export function useTicketDetail(ticketId: number) {
             loading.value = false
         }
     }
+
+    /**
+     * Subscribe to real-time updates
+     */
+    function subscribeToUpdates() {
+        if (window.Echo) {
+            console.log(`TicketDetail: Subscribing to ticket.${ticketId}`)
+            window.Echo.private(`ticket.${ticketId}`)
+                .listen('.ticket.activity', (e: any) => {
+                    console.log('TicketDetail: Update received', e.activity)
+                    handleRealTimeUpdate(e.activity)
+                })
+        }
+    }
+
+    /**
+     * Handle incoming real-time activity
+     */
+    function handleRealTimeUpdate(activity: any) {
+        if (!ticket.value) return
+
+        // 1. Update Status locally if changed
+        if (activity.activity_type === 'status_changed' && activity.metadata?.new_status) {
+            ticket.value.status = activity.metadata.new_status
+        }
+
+        // 2. Update Assignment locally if changed
+        if (activity.activity_type === 'assigned' && activity.metadata?.assignee_id) {
+            ticket.value.assigned_to_id = activity.metadata.assignee_id
+            ticket.value.assigned_to = {
+                id: activity.metadata.assignee_id,
+                employee_name: activity.metadata.assignee_name || 'Assigned User' // Fallback
+            }
+        }
+
+        // 3. Show notification if action was done by someone else
+        if (activity.user_id !== authStore.user?.id) {
+            const description = activity.description
+                ? activity.description
+                : 'Ticket updated'
+
+            showInfo('Update Received', description)
+        }
+    }
+
+    onUnmounted(() => {
+        if (window.Echo) {
+            window.Echo.private(`ticket.${ticketId}`).stopListening('.ticket.activity')
+        }
+    })
 
     /**
      * Accept ticket (assign to self)

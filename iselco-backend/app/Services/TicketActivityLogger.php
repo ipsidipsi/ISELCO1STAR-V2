@@ -8,8 +8,19 @@ use App\Models\User;
 use App\Models\Comment;
 use App\Models\Attachment;
 
+use App\Events\TicketActivityLogged;
+
 class TicketActivityLogger
 {
+    /**
+     * Helper to create activity and dispatch event
+     */
+    private static function createAndLog(array $data): void
+    {
+        $activity = TicketActivity::create($data);
+        event(new TicketActivityLogged($activity));
+    }
+
     /**
      * Get user display name (employee_name or username fallback)
      */
@@ -23,7 +34,7 @@ class TicketActivityLogger
      */
     public static function logCreated(Ticket $ticket, User $user): void
     {
-        TicketActivity::create([
+        self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'ticket_created',
@@ -43,7 +54,7 @@ class TicketActivityLogger
         $oldStatusFormatted = str_replace('_', ' ', ucfirst($oldStatus));
         $newStatusFormatted = str_replace('_', ' ', ucfirst($newStatus));
 
-        TicketActivity::create([
+        self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'status_changed',
@@ -60,7 +71,7 @@ class TicketActivityLogger
      */
     public static function logAssigned(Ticket $ticket, User $assignee, User $actor): void
     {
-        TicketActivity::create([
+        self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $actor->id,
             'activity_type' => 'assigned',
@@ -77,7 +88,7 @@ class TicketActivityLogger
      */
     public static function logReassigned(Ticket $ticket, User $oldAssignee, User $newAssignee, User $actor): void
     {
-        TicketActivity::create([
+        self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $actor->id,
             'activity_type' => 'reassigned',
@@ -94,7 +105,7 @@ class TicketActivityLogger
      */
     public static function logStarted(Ticket $ticket, User $user): void
     {
-        TicketActivity::create([
+        self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'started',
@@ -112,7 +123,7 @@ class TicketActivityLogger
             $description .= " with notes: \"{$notes}\"";
         }
 
-        TicketActivity::create([
+        self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'resolved',
@@ -126,7 +137,7 @@ class TicketActivityLogger
      */
     public static function logVerified(Ticket $ticket, User $user): void
     {
-        TicketActivity::create([
+        self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'verified',
@@ -139,7 +150,7 @@ class TicketActivityLogger
      */
     public static function logReopened(Ticket $ticket, User $user, string $reason): void
     {
-        TicketActivity::create([
+        self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'reopened',
@@ -153,7 +164,7 @@ class TicketActivityLogger
      */
     public static function logComment(Ticket $ticket, Comment $comment, User $user): void
     {
-        TicketActivity::create([
+        self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'comment_added',
@@ -172,7 +183,7 @@ class TicketActivityLogger
     {
         $fileSizeMB = round($attachment->file_size / (1024 * 1024), 2);
         
-        TicketActivity::create([
+        self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'attachment_uploaded',

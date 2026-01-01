@@ -42,6 +42,9 @@ import './styles/tailwind.css';
 /* SweetAlert2 CSS */
 import 'sweetalert2/dist/sweetalert2.min.css';
 
+/* Echo / WebSocket */
+import './echo';
+
 // Initialize Pinia
 const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)
