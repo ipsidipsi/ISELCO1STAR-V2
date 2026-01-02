@@ -28,14 +28,8 @@
     <ion-content :fullscreen="true" class="gradient-bg">
       <div class="p-4 max-w-7xl mx-auto">
         
-        <!-- Loading State -->
-        <div v-if="loading" class="flex justify-center items-center py-20">
-          <ion-spinner name="crescent" class="text-teal"></ion-spinner>
-        </div>
-
-        <template v-else>
-          <!-- Temporary Role Notification Banner -->
-          <div v-if="hasTemporaryRoles" class="temp-role-notification mb-6">
+        <!-- Temporary Role Notification Banner -->
+        <div v-if="hasTemporaryRoles" class="temp-role-notification mb-6">
             <div class="flex items-center p-4">
               <ion-icon :icon="shieldCheckmarkOutline" class="text-3xl mr-3 text-white"></ion-icon>
               <div class="flex-1">
@@ -54,7 +48,7 @@
             <!-- Pending Tickets -->
             <div @click="navigateToTickets('pending')" class="glass-card card-blue clickable relative">
               <!-- Loading overlay -->
-              <div v-if="loading" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+              <div v-if="cardLoading.pending" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
                 <ion-spinner name="crescent" class="text-blue-600"></ion-spinner>
               </div>
               <div class="flex items-center justify-between">
@@ -69,7 +63,10 @@
             </div>
 
             <!-- Assigned to Me -->
-            <div @click="navigateToTickets('assigned')" class="glass-card card-teal clickable">
+            <div @click="navigateToTickets('assigned')" class="glass-card card-teal clickable relative">
+              <div v-if="cardLoading.assigned" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+                <ion-spinner name="crescent" class="text-teal-600"></ion-spinner>
+              </div>
               <div class="flex items-center justify-between">
                 <div class="flex-1">
                   <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Assigned to Me</p>
@@ -82,7 +79,10 @@
             </div>
 
             <!-- In Progress -->
-            <div @click="navigateToTickets('in_progress')" class="glass-card card-yellow clickable">
+            <div @click="navigateToTickets('in_progress')" class="glass-card card-yellow clickable relative">
+              <div v-if="cardLoading.inProgress" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+                <ion-spinner name="crescent" class="text-yellow-600"></ion-spinner>
+              </div>
               <div class="flex items-center justify-between">
                 <div class="flex-1">
                   <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">In Progress</p>
@@ -95,7 +95,10 @@
             </div>
 
             <!-- Pending Verification Card -->
-            <div @click="navigateToTickets('pending_verification')" class="glass-card card-purple clickable">
+            <div @click="navigateToTickets('pending_verification')" class="glass-card card-purple clickable relative">
+              <div v-if="cardLoading.verification" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+                <ion-spinner name="crescent" class="text-purple-600"></ion-spinner>
+              </div>
               <div class="flex items-center justify-between">
                 <div class="flex-1">
                   <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Pending Verification</p>
@@ -109,7 +112,10 @@
             </div>
 
             <!-- Closed Card (Completed) -->
-            <div @click="navigateToTickets('closed')" class="glass-card card-green clickable">
+            <div @click="navigateToTickets('closed')" class="glass-card card-green clickable relative">
+              <div v-if="cardLoading.closed" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+                <ion-spinner name="crescent" class="text-green-600"></ion-spinner>
+              </div>
               <div class="flex items-center justify-between">
                 <div class="flex-1">
                   <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Completed</p>
@@ -123,7 +129,10 @@
             </div>
 
             <!-- My Requests -->
-            <div @click="navigateToTickets('my_requests')" class="glass-card card-purple clickable">
+            <div @click="navigateToTickets('my_requests')" class="glass-card card-purple clickable relative">
+              <div v-if="cardLoading.myRequests" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+                <ion-spinner name="crescent" class="text-purple-600"></ion-spinner>
+              </div>
               <div class="flex items-center justify-between">
                 <div class="flex-1">
                   <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">My Requests</p>
@@ -198,7 +207,6 @@
               </div>
             </div>
           </div>
-        </template>
       </div>
     </ion-content>
 
@@ -238,6 +246,16 @@ const authStore = useAuthStore()
 const { stats, tickets, loading, loadStats, loadTickets } = useTickets()
 const { showInfo } = useNotification()
 const notificationStore = useNotificationStore()
+
+// Individual loading states for each card
+const cardLoading = ref({
+  pending: false,
+  assigned: false,
+  inProgress: false,
+  verification: false,
+  closed: false,
+  myRequests: false
+})
 
 const user = computed(() => authStore.user)
 const showCreateModal = ref(false)
@@ -331,8 +349,22 @@ onMounted(async () => {
     // Only refresh if count increased (new notification arrived)
     if (newCount > oldCount) {
       console.log('[Dashboard] New notification detected, refreshing stats...')
+      
+      // Animate all cards briefly
+      Object.keys(cardLoading.value).forEach(key => {
+        cardLoading.value[key as keyof typeof cardLoading.value] = true
+      })
+      
+      // Fetch new stats
       loadStats()
       loadTickets({ limit: 5 })
+      
+      // Hide spinners after brief delay
+      setTimeout(() => {
+        Object.keys(cardLoading.value).forEach(key => {
+          cardLoading.value[key as keyof typeof cardLoading.value] = false
+        })
+      }, 500)
     }
   })
 })
