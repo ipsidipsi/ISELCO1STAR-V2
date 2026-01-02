@@ -1,7 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { Capacitor } from '@capacitor/core'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { useLocalNotifications } from '@/composables/useLocalNotifications'
+import { useRouter } from 'vue-router'
 
 export interface Notification {
     id: string
@@ -21,14 +24,28 @@ export interface Notification {
     created_at: string
 }
 
+interface NotificationPreferences {
+    is_muted: boolean
+    web_push_enabled: boolean
+    browser_enabled: boolean
+    sound_enabled: boolean
+}
+
 export const useNotificationStore = defineStore('notifications', () => {
     const notifications = ref<Notification[]>([])
     const unreadCount = ref(0)
     const page = ref(1)
     const hasMore = ref(true)
     const loading = ref(false)
+    const preferences = ref<NotificationPreferences>({
+        is_muted: false,
+        web_push_enabled: true,
+        browser_enabled: true,
+        sound_enabled: true
+    })
 
     const authStore = useAuthStore()
+    const { scheduleNotification, isNative } = useLocalNotifications()
 
     // Actions
     async function fetchNotifications(refresh = false) {
@@ -140,28 +157,123 @@ export const useNotificationStore = defineStore('notifications', () => {
         }
     }
 
-    function handleRealTimeNotification(notification: any) {
-        // notification is the payload from Echo event "Illuminate\Notifications\Events\BroadcastNotificationCreated"
-        // The structure is usually notification.id, notification.type, notification.data
-        // But Laravel BroadcastNotificationCreated event wraps it.
-        // Actually, Echo receives the raw notification data directly if formatted correctly locally.
+    async function deleteAllNotifications() {
+        // Optimistic
+        notifications.value = []
+        unreadCount.value = 0
 
-        // We need to shape it to match our interface
+        try {
+            await api.delete('/notifications/delete-all')
+        } catch (error) {
+            console.error('Failed to delete all notifications', error)
+            // Refresh to get real state
+            fetchNotifications(true)
+            fetchUnreadCount()
+        }
+    }
+
+    async function fetchPreferences() {
+        try {
+            const response = await api.get('/notifications/preferences')
+            preferences.value = response.data
+        } catch (error) {
+            console.error('Failed to fetch preferences', error)
+        }
+    }
+
+    async function updatePreferences(updates: Partial<NotificationPreferences>) {
+        // Optimistic
+        Object.assign(preferences.value, updates)
+
+        try {
+            await api.patch('/notifications/preferences', updates)
+        } catch (error) {
+            console.error('Failed to update preferences', error)
+            // Revert on error
+            fetchPreferences()
+        }
+    }
+
+    function showBrowserNotification(notif: Notification) {
+        // Don't show if permission not granted or muted
+        if (Notification.permission !== 'granted' || preferences.value.is_muted) {
+            return
+        }
+
+        // Don't show if document visible (user is already looking at the app)
+        if (!document.hidden && !preferences.value.browser_enabled) {
+            return
+        }
+
+        try {
+            const notification = new Notification(`Ticket ${notif.data.ticket_number}`, {
+                body: notif.data.message,
+                icon: '/icon-192.png',
+                badge: '/icon-192.png',
+                tag: `ticket-${notif.data.ticket_id}`,
+                data: { ticket_id: notif.data.ticket_id },
+                requireInteraction: false
+            })
+
+            notification.onclick = () => {
+                window.focus()
+                // Navigate to ticket (need router instance)
+                window.location.hash = `#/tickets/${notif.data.ticket_id}`
+                notification.close()
+            }
+        } catch (error) {
+            console.error('[Notifications] Failed to show browser notification', error)
+        }
+    }
+
+    function handleRealTimeNotification(notification: any) {
+        // Shape to match our interface
         const newNotif: Notification = {
             id: notification.id,
             type: notification.type,
-            notifiable_type: 'App\\Models\\User', // Assumed
+            notifiable_type: 'App\\Models\\User',
             notifiable_id: authStore.user?.id || 0,
-            data: notification.data || notification, // Depending on if it's wrapped
+            data: notification.data || notification,
             read_at: null,
             created_at: new Date().toISOString()
         }
 
         // Add to list
         notifications.value.unshift(newNotif)
-
-        // Add to count
         unreadCount.value++
+
+        // Don't trigger notifications if muted
+        if (preferences.value.is_muted) {
+            console.log('[Notifications] Notification muted', newNotif.data.ticket_number)
+            return
+        }
+
+        // Trigger local notification for native apps
+        if (isNative) {
+            scheduleNotification(newNotif)
+        }
+
+        // Trigger browser notification for web
+        if (!isNative && preferences.value.browser_enabled) {
+            showBrowserNotification(newNotif)
+        }
+
+        // Play sound if enabled
+        if (preferences.value.sound_enabled) {
+            playNotificationSound()
+        }
+    }
+
+    function playNotificationSound() {
+        try {
+            const audio = new Audio('/notification.mp3')
+            audio.volume = 0.5
+            audio.play().catch(error => {
+                console.log('[Notifications] Sound play failed (user interaction may be required)', error)
+            })
+        } catch (error) {
+            console.error('[Notifications] Failed to play sound', error)
+        }
     }
 
     function initializeListener() {
@@ -204,12 +316,16 @@ export const useNotificationStore = defineStore('notifications', () => {
         unreadCount,
         loading,
         hasMore,
+        preferences,
         fetchNotifications,
         fetchUnreadCount,
+        fetchPreferences,
+        updatePreferences,
         markAsRead,
         markAllAsRead,
         markTicketAsRead,
         deleteNotification,
+        deleteAllNotifications,
         handleRealTimeNotification,
         initializeListener,
         stopListener

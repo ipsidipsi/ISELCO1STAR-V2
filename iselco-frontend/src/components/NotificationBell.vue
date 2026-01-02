@@ -1,7 +1,11 @@
 <template>
   <div class="relative inline-block">
     <ion-button fill="clear" id="notification-trigger" class="relative">
-      <ion-icon :icon="notificationsOutline" class="text-2xl text-gray-600 dark:text-gray-300"></ion-icon>
+      <ion-icon 
+        :icon="preferences.is_muted ? notificationsOffOutline : notificationsOutline" 
+        class="text-2xl" 
+        :class="preferences.is_muted ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-300'"
+      ></ion-icon>
       <span 
         v-if="unreadCount > 0"
         class="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-1 ring-white"
@@ -16,7 +20,21 @@
         <!-- Header -->
         <div class="p-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700/50">
           <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Notifications</h3>
-          <div class="flex gap-2">
+          <div class="flex gap-2 items-center">
+            <button 
+              v-if="notifications.length > 0"
+              @click="confirmDeleteAll"
+              class="text-xs text-red-600 dark:text-red-400 hover:text-red-800 font-medium"
+            >
+              Delete All
+            </button>
+            <button 
+              @click="toggleMute"
+              class="text-lg hover:bg-gray-200 dark:hover:bg-gray-600 rounded p-1 transition"
+              :title="preferences.is_muted ? 'Unmute notifications' : 'Mute notifications'"
+            >
+              <ion-icon :icon="preferences.is_muted ? volumeMuteOutline : volumeHighOutline"></ion-icon>
+            </button>
             <button 
               v-if="unreadCount > 0"
               @click="markAllRead"
@@ -96,20 +114,23 @@ import { IonButton, IonIcon, IonPopover, IonSpinner } from '@ionic/vue'
 import { 
   notificationsOutline, notificationsOffOutline, 
   chatbubbleOutline, checkmarkCircleOutline, personOutline, 
-  swapHorizontalOutline, alertCircleOutline, refreshOutline
+  swapHorizontalOutline, alertCircleOutline, refreshOutline,
+  volumeMuteOutline, volumeHighOutline
 } from 'ionicons/icons'
 import { useNotificationStore } from '@/stores/notifications'
 import { storeToRefs } from 'pinia'
+import Swal from 'sweetalert2'
 
 // Props & Emit not needed as it's self-contained with store
 
 const router = useRouter()
 const notifStore = useNotificationStore()
-const { notifications, unreadCount, loading, hasMore } = storeToRefs(notifStore)
+const { notifications, unreadCount, loading, hasMore, preferences } = storeToRefs(notifStore)
 
 onMounted(() => {
   notifStore.fetchNotifications(true)
   notifStore.fetchUnreadCount()
+  notifStore.fetchPreferences()
   notifStore.initializeListener()
 })
 
@@ -119,6 +140,35 @@ onUnmounted(() => {
 
 async function markAllRead() {
   await notifStore.markAllAsRead()
+}
+
+async function confirmDeleteAll() {
+  const result = await Swal.fire({
+    title: 'Delete All Notifications?',
+    text: 'This action cannot be undone',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Delete All',
+    confirmButtonColor: '#dc2626',
+    cancelButtonText: 'Cancel'
+  })
+  
+  if (result.isConfirmed) {
+    await notifStore.deleteAllNotifications()
+    Swal.fire({
+      title: 'Deleted!',
+      text: 'All notifications have been removed',
+      icon: 'success',
+      timer: 2000,
+      showConfirmButton: false
+    })
+  }
+}
+
+async function toggleMute() {
+  await notifStore.updatePreferences({
+    is_muted: !notifStore.preferences.is_muted
+  })
 }
 
 async function loadMore() {

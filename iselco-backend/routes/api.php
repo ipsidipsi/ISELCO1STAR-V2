@@ -34,6 +34,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
     // Smart Read
     Route::post('/notifications/mark-ticket-read/{ticketId}', [NotificationController::class, 'markTicketAsRead']);
+    // Delete All
+    Route::delete('/notifications/delete-all', [NotificationController::class, 'deleteAll']);
+    // Preferences
+    Route::get('/notifications/preferences', [NotificationController::class, 'getPreferences']);
+    Route::patch('/notifications/preferences', [NotificationController::class, 'updatePreferences']);
+    // Web Push
+    Route::post('/notifications/web-push/subscribe', [NotificationController::class, 'subscribeWebPush']);
 
     // Auth & Userntication
     //------------------------------------------------------------

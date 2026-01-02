@@ -80,8 +80,14 @@ class TicketActivityLogger
             ],
         ]);
         
-        // Notify Admins (Superadmins & Department Admins)
-        self::notifyAdmins($ticket, $user, 'ticket_created', "New ticket created by " . self::getUserName($user));
+        // Check if ticket is assigned or unassigned
+        if (!$ticket->assigned_to_id) {
+            // Unassigned ticket: Notify entire department (admins + tech users)
+            self::notifyDepartment($ticket, $user, 'ticket_created', "New unassigned ticket created by " . self::getUserName($user));
+        } else {
+            // Pre-assigned ticket: Notify assignee and department managers
+            self::notifyUsers($ticket, $user, 'ticket_created', "New ticket created and assigned to you");
+        }
     }
 
     /**
@@ -114,6 +120,66 @@ class TicketActivityLogger
 
         // Filter duplicates
         $recipients = $recipients->unique('id');
+        
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new TicketUpdated($ticket, $actor, $actionType, $message));
+        }
+    }
+
+    /**
+     * Helper: Notify Department (All dept admins + department users)
+     * Used for unassigned tickets to notify everyone in the department
+     */
+    private static function notifyDepartment(Ticket $ticket, User $actor, string $actionType, string $message): void
+    {
+        if (!$ticket->department_id) {
+            return; // No department, can't notify
+        }
+
+        $recipients = collect();
+        
+        // 1. Superadmins & Global Admins (always included)
+        $superadmins = User::whereHas('roles', function($q) {
+            $q->whereIn('slug', ['superadmin', 'admin']);
+        })->where('id', '!=', $actor->id)->get();
+        
+        $recipients = $recipients->merge($superadmins);
+
+        // 2. Department Admins for this specific department
+        $deptAdmins = User::whereHas('roles', function($q) {
+            $q->where('slug', 'department_admin');
+        })
+        ->whereHas('activeDepartments', function($q) use ($ticket) {
+            $q->where('departments.id', $ticket->department_id);
+        })
+        ->where('id', '!=', $actor->id)
+        ->get();
+        
+        $recipients = $recipients->merge($deptAdmins);
+
+        // 3. All users in the department (primary department or active departments)
+        $deptUsers = User::where(function($q) use ($ticket) {
+            $q->where('department_id', $ticket->department_id)
+              ->orWhereHas('activeDepartments', function($subQ) use ($ticket) {
+                  $subQ->where('departments.id', $ticket->department_id);
+              });
+        })
+        ->where('is_active', true)
+        ->where('id', '!=', $actor->id)
+        ->get();
+        
+        $recipients = $recipients->merge($deptUsers);
+
+        // Filter duplicates
+        $recipients = $recipients->unique('id');
+        
+        \Log::info('[TicketActivityLogger] Notifying department for unassigned ticket', [
+            'ticket_id' => $ticket->id,
+            'department_id' => $ticket->department_id,
+            'actor_id' => $actor->id,
+            'recipients_count' => $recipients->count(),
+            'recipient_ids' => $recipients->pluck('id')->toArray(),
+        ]);
         
         if ($recipients->isNotEmpty()) {
             Notification::send($recipients, new TicketUpdated($ticket, $actor, $actionType, $message));

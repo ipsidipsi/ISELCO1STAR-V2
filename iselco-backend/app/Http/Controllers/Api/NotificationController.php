@@ -89,4 +89,69 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Notification deleted']);
     }
+
+    /**
+     * Delete all notifications for current user
+     */
+    public function deleteAll(Request $request)
+    {
+        $request->user()->notifications()->delete();
+
+        return response()->json(['message' => 'All notifications deleted']);
+    }
+
+    /**
+     * Get user notification preferences
+     */
+    public function getPreferences(Request $request)
+    {
+        $preferences = $request->user()->notificationPreference ?? new \App\Models\NotificationPreference([
+            'user_id' => $request->user()->id,
+            'is_muted' => false,
+            'web_push_enabled' => true,
+            'browser_enabled' => true,
+            'sound_enabled' => true
+        ]);
+
+        return response()->json($preferences);
+    }
+
+    /**
+     * Update user notification preferences
+     */
+    public function updatePreferences(Request $request)
+    {
+        $validated = $request->validate([
+            'is_muted' => 'sometimes|boolean',
+            'web_push_enabled' => 'sometimes|boolean',
+            'browser_enabled' => 'sometimes|boolean',
+            'sound_enabled' => 'sometimes|boolean',
+        ]);
+
+        $preferences = $request->user()->notificationPreference()->updateOrCreate(
+            ['user_id' => $request->user()->id],
+            $validated
+        );
+
+        return response()->json($preferences);
+    }
+
+    /**
+     * Subscribe to Web Push notifications
+     */
+    public function subscribeWebPush(Request $request)
+    {
+        $validated = $request->validate([
+            'subscription' => 'required|array',
+            'subscription.endpoint' => 'required|string',
+            'subscription.keys' => 'required|array'
+        ]);
+
+        $request->user()->notificationPreference()->updateOrCreate(
+            ['user_id' => $request->user()->id],
+            ['web_push_subscription' => $validated['subscription']]
+        );
+
+        return response()->json(['message' => 'Subscribed to Web Push']);
+    }
 }

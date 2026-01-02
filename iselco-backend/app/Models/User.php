@@ -213,6 +213,14 @@ class User extends Authenticatable
         return $this->hasMany(Attachment::class, 'uploaded_by_user_id');
     }
 
+    /**
+     * User's notification preferences.
+     */
+    public function notificationPreference()
+    {
+        return $this->hasOne(NotificationPreference::class);
+    }
+
     // ==================== RBAC METHODS ====================
 
     /**
