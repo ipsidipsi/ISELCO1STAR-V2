@@ -119,23 +119,23 @@ import {
 } from 'ionicons/icons'
 import { useNotificationStore } from '@/stores/notifications'
 import { storeToRefs } from 'pinia'
-import Swal from 'sweetalert2'
+import { useCustomNotification } from '@/composables/useCustomNotification'
 
 // Props & Emit not needed as it's self-contained with store
 
 const router = useRouter()
 const notifStore = useNotificationStore()
 const { notifications, unreadCount, loading, hasMore, preferences } = storeToRefs(notifStore)
+const { showConfirm, showSuccess } = useCustomNotification()
 
 onMounted(() => {
   notifStore.fetchNotifications(true)
   notifStore.fetchUnreadCount()
-  notifStore.fetchPreferences()
-  notifStore.initializeListener()
+  // Note: initializeListener and fetchPreferences are called in DashboardPage onMounted
 })
 
 onUnmounted(() => {
-    notifStore.stopListener()
+    // Don't stop listener here - it's managed by DashboardPage
 })
 
 async function markAllRead() {
@@ -143,25 +143,16 @@ async function markAllRead() {
 }
 
 async function confirmDeleteAll() {
-  const result = await Swal.fire({
-    title: 'Delete All Notifications?',
-    text: 'This action cannot be undone',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Delete All',
-    confirmButtonColor: '#dc2626',
-    cancelButtonText: 'Cancel'
-  })
+  const result = await showConfirm(
+    'Delete All Notifications?',
+    'This action cannot be undone',
+    'Delete All',
+    'Cancel'
+  )
   
   if (result.isConfirmed) {
     await notifStore.deleteAllNotifications()
-    Swal.fire({
-      title: 'Deleted!',
-      text: 'All notifications have been removed',
-      icon: 'success',
-      timer: 2000,
-      showConfirmButton: false
-    })
+    await showSuccess('Deleted!', 'All notifications have been removed')
   }
 }
 

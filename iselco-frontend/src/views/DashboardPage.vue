@@ -227,11 +227,13 @@ import CreateTicketModal from '@/components/CreateTicketModal.vue'
 // Import Notification Bell
 import NotificationBell from '@/components/NotificationBell.vue'
 import { useNotification } from '@/composables/useNotification'
+import { useNotificationStore } from '@/stores/notifications'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const { stats, tickets, loading, loadStats, loadTickets } = useTickets()
 const { showInfo } = useNotification()
+const notificationStore = useNotificationStore()
 
 const user = computed(() => authStore.user)
 const showCreateModal = ref(false)
@@ -310,11 +312,20 @@ function unsubscribeDashboard() {
 }
 
 onMounted(async () => {
+  // Initialize notification store listener FIRST
+  notificationStore.initializeListener()
+  notificationStore.fetchUnreadCount()
+  notificationStore.fetchPreferences()
+  
   await Promise.all([
     loadStats(),
     loadTickets({ limit: 5 })
   ])
   subscribeToDashboardUpdates()
+})
+
+onUnmounted(() => {
+  notificationStore.stopListener()
 })
 
 async function handleLogout() {

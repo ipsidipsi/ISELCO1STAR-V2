@@ -30,17 +30,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::patch('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
-    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
-    // Smart Read
-    Route::post('/notifications/mark-ticket-read/{ticketId}', [NotificationController::class, 'markTicketAsRead']);
-    // Delete All
+    // Delete All - MUST come before {id} route
     Route::delete('/notifications/delete-all', [NotificationController::class, 'deleteAll']);
-    // Preferences
+    // Preferences - MUST come before {id} route  
     Route::get('/notifications/preferences', [NotificationController::class, 'getPreferences']);
     Route::patch('/notifications/preferences', [NotificationController::class, 'updatePreferences']);
-    // Web Push
+    // Web Push - MUST come before {id} route
     Route::post('/notifications/web-push/subscribe', [NotificationController::class, 'subscribeWebPush']);
+    // Smart Read - MUST come before {id} route
+    Route::post('/notifications/mark-ticket-read/{ticketId}', [NotificationController::class, 'markTicketAsRead']);
+    // Parameterized routes LAST
+    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 
     // Auth & Userntication
     //------------------------------------------------------------
