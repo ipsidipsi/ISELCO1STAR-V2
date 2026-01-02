@@ -5,11 +5,10 @@ import axios from 'axios';
 // Polyfill Pusher on window for Echo to use
 (window as any).Pusher = Pusher;
 
-// Get API base URL and strip '/api' suffix if present to get root URL
+// Get API base URL
 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
 
-(window as any).Echo = new Echo({
+export const echo = new Echo({
     broadcaster: 'reverb',
     key: import.meta.env.VITE_REVERB_APP_KEY,
     wsHost: import.meta.env.VITE_REVERB_HOST,
@@ -39,7 +38,8 @@ const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
                     return;
                 }
 
-                axios.post(baseUrl + '/broadcasting/auth', {
+                // Use apiUrl directly (points to /api)
+                axios.post(apiUrl + '/broadcasting/auth', {
                     socket_id: socketId,
                     channel_name: channel.name
                 }, {
@@ -58,5 +58,7 @@ const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
         };
     },
 });
+
+(window as any).Echo = echo;
 
 console.log('Echo initialized with Reverb');

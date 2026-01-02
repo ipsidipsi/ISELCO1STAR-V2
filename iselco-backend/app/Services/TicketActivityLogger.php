@@ -7,6 +7,8 @@ use App\Models\TicketActivity;
 use App\Models\User;
 use App\Models\Comment;
 use App\Models\Attachment;
+use App\Notifications\TicketUpdated;
+use Illuminate\Support\Facades\Notification;
 
 use App\Events\TicketActivityLogged;
 
@@ -19,6 +21,39 @@ class TicketActivityLogger
     {
         $activity = TicketActivity::create($data);
         event(new TicketActivityLogged($activity));
+    }
+
+    /**
+     * Helper: Notify relevant users (Requestor <-> Assignee)
+     */
+    private static function notifyUsers(Ticket $ticket, User $actor, string $actionType, string $message): void
+    {
+        $recipients = collect();
+
+        // 1. Notify Requestor (if actor is NOT requestor)
+        // if ($ticket->requestor_id !== $actor->id) {
+            $recipients->push($ticket->requestor);
+        // }
+
+        // 2. Notify Assignee (if exists and actor is NOT assignee)
+        if ($ticket->assigned_to_id) { // && $ticket->assigned_to_id !== $actor->id) {
+            $recipients->push($ticket->assignedTo);
+        }
+
+        // 3. (Optional) If unassigned and created/updated, maybe notify Department Admins? 
+        // For now, keep it simple: direct stakeholders only.
+        
+        \Log::info('TicketActivityLogger: Preparing to notify users', [
+            'ticket_id' => $ticket->id,
+            'actor_id' => $actor->id,
+            'recipients_count' => $recipients->count(),
+            'recipient_ids' => $recipients->pluck('id')->toArray(),
+            'action' => $actionType
+        ]);
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new TicketUpdated($ticket, $actor, $actionType, $message));
+        }
     }
 
     /**
@@ -44,6 +79,45 @@ class TicketActivityLogger
                 'priority' => $ticket->priority?->name,
             ],
         ]);
+        
+        // Notify Admins (Superadmins & Department Admins)
+        self::notifyAdmins($ticket, $user, 'ticket_created', "New ticket created by " . self::getUserName($user));
+    }
+
+    /**
+     * Helper: Notify Admins (Superadmins & Department Admins)
+     */
+    private static function notifyAdmins(Ticket $ticket, User $actor, string $actionType, string $message): void
+    {
+        $recipients = collect();
+
+        // 1. Superadmins & Global Admins
+        $superadmins = User::whereHas('roles', function($q) {
+            $q->whereIn('slug', ['superadmin', 'admin']);
+        })->where('id', '!=', $actor->id)->get();
+        
+        $recipients = $recipients->merge($superadmins);
+
+        // 2. Department Admins (if ticket has department)
+        if ($ticket->department_id) {
+            $deptAdmins = User::whereHas('roles', function($q) {
+                $q->where('slug', 'department_admin');
+            })
+            ->whereHas('activeDepartments', function($q) use ($ticket) {
+                $q->where('departments.id', $ticket->department_id);
+            })
+            ->where('id', '!=', $actor->id)
+            ->get();
+            
+            $recipients = $recipients->merge($deptAdmins);
+        }
+
+        // Filter duplicates
+        $recipients = $recipients->unique('id');
+        
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new TicketUpdated($ticket, $actor, $actionType, $message));
+        }
     }
 
     /**
@@ -53,17 +127,20 @@ class TicketActivityLogger
     {
         $oldStatusFormatted = str_replace('_', ' ', ucfirst($oldStatus));
         $newStatusFormatted = str_replace('_', ' ', ucfirst($newStatus));
+        $desc = self::getUserName($user) . " changed status from {$oldStatusFormatted} to {$newStatusFormatted}";
 
         self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'activity_type' => 'status_changed',
-            'description' => self::getUserName($user) . " changed status from {$oldStatusFormatted} to {$newStatusFormatted}",
+            'description' => $desc,
             'metadata' => [
                 'old_status' => $oldStatus,
                 'new_status' => $newStatus,
             ],
         ]);
+
+        self::notifyUsers($ticket, $user, 'status_changed', "Status changed to {$newStatusFormatted}");
     }
 
     /**
@@ -71,16 +148,28 @@ class TicketActivityLogger
      */
     public static function logAssigned(Ticket $ticket, User $assignee, User $actor): void
     {
+        $desc = self::getUserName($actor) . " assigned this ticket to " . self::getUserName($assignee);
+
         self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $actor->id,
             'activity_type' => 'assigned',
-            'description' => self::getUserName($actor) . " assigned this ticket to " . self::getUserName($assignee),
+            'description' => $desc,
             'metadata' => [
                 'assignee_id' => $assignee->id,
                 'assignee_name' => self::getUserName($assignee),
             ],
         ]);
+
+        // Notify the new assignee
+        if ($assignee->id !== $actor->id) {
+            $assignee->notify(new TicketUpdated($ticket, $actor, 'assigned', "You have been assigned this ticket"));
+        }
+        
+        // Notify requestor
+        if ($ticket->requestor_id !== $actor->id) {
+            $ticket->requestor->notify(new TicketUpdated($ticket, $actor, 'assigned', "Ticket assigned to " . self::getUserName($assignee)));
+        }
     }
 
     /**
@@ -88,16 +177,28 @@ class TicketActivityLogger
      */
     public static function logReassigned(Ticket $ticket, User $oldAssignee, User $newAssignee, User $actor): void
     {
+        $desc = self::getUserName($actor) . " reassigned from " . self::getUserName($oldAssignee) . " to " . self::getUserName($newAssignee);
+
         self::createAndLog([
             'ticket_id' => $ticket->id,
             'user_id' => $actor->id,
             'activity_type' => 'reassigned',
-            'description' => self::getUserName($actor) . " reassigned from " . self::getUserName($oldAssignee) . " to " . self::getUserName($newAssignee),
+            'description' => $desc,
             'metadata' => [
                 'old_assignee_id' => $oldAssignee->id,
                 'new_assignee_id' => $newAssignee->id,
             ],
         ]);
+
+        // Notify new assignee
+        $newAssignee->notify(new TicketUpdated($ticket, $actor, 'reassigned', "Ticket reassigned to you"));
+        
+        // Notify old assignee? Optional.
+        
+        // Notify requestor
+        if ($ticket->requestor_id !== $actor->id) {
+            $ticket->requestor->notify(new TicketUpdated($ticket, $actor, 'reassigned', "Ticket reassigned to " . self::getUserName($newAssignee)));
+        }
     }
 
     /**
@@ -111,6 +212,8 @@ class TicketActivityLogger
             'activity_type' => 'started',
             'description' => self::getUserName($user) . " started working on this ticket",
         ]);
+
+        self::notifyUsers($ticket, $user, 'started', "Started working on ticket");
     }
 
     /**
@@ -130,6 +233,8 @@ class TicketActivityLogger
             'description' => $description,
             'metadata' => ['notes' => $notes],
         ]);
+
+        self::notifyUsers($ticket, $user, 'resolved', "Ticket marked as resolved");
     }
 
     /**
@@ -143,6 +248,8 @@ class TicketActivityLogger
             'activity_type' => 'verified',
             'description' => self::getUserName($user) . " verified and closed this ticket",
         ]);
+
+        self::notifyUsers($ticket, $user, 'verified', "Ticket verified and closed");
     }
 
     /**
@@ -157,6 +264,8 @@ class TicketActivityLogger
             'description' => self::getUserName($user) . " rejected the solution and reopened: \"{$reason}\"",
             'metadata' => ['reason' => $reason],
         ]);
+
+        self::notifyUsers($ticket, $user, 'reopened', "Ticket reopened: {$reason}");
     }
 
     /**
@@ -174,6 +283,8 @@ class TicketActivityLogger
                 'comment_preview' => substr($comment->message, 0, 100),
             ],
         ]);
+
+        self::notifyUsers($ticket, $user, 'comment_added', "Added a comment");
     }
 
     /**
@@ -194,5 +305,8 @@ class TicketActivityLogger
                 'file_size' => $attachment->file_size,
             ],
         ]);
+
+        self::notifyUsers($ticket, $user, 'attachment_uploaded', "Uploaded attachment: {$attachment->file_name}");
     }
 }
+

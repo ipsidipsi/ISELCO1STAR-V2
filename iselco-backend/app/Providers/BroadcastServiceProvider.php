@@ -16,7 +16,7 @@ class BroadcastServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Register broadcasting auth route with manual Sanctum authentication
-        Route::post('/broadcasting/auth', function (Request $request) {
+        Route::post('api/broadcasting/auth', function (Request $request) {
             // Manually authenticate using Sanctum token
             $token = $request->bearerToken();
             

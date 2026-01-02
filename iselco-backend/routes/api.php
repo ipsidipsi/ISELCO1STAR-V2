@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\MetadataController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\PriorityController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -24,7 +26,16 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::middleware('auth:sanctum')->group(function () {
     
     //------------------------------------------------------------
-    // Authentication
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::patch('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+    // Smart Read
+    Route::post('/notifications/mark-ticket-read/{ticketId}', [NotificationController::class, 'markTicketAsRead']);
+
+    // Auth & Userntication
     //------------------------------------------------------------
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);

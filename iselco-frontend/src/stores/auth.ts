@@ -56,8 +56,20 @@ export const useAuthStore = defineStore('auth', () => {
         } catch (error) {
             console.error('Logout error:', error)
         } finally {
+            // 1. Disconnect Echo/Reverb
+            if ((window as any).Echo) {
+                (window as any).Echo.disconnect()
+            }
+
+            // 2. Clear State
             user.value = null
             token.value = null
+
+            // 3. Force Clear Storage (Nuclear option)
+            localStorage.removeItem('auth')
+            localStorage.clear() // Clear everything to be safe during this debug phase
+
+            // 4. Redirect
             await router.push('/login')
         }
     }

@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import api from '@/services/api'
-import echo from '@/services/echo'
+import { echo } from '@/echo'
 import { useNotification } from '@/composables/useNotification'
 
 export interface Comment {

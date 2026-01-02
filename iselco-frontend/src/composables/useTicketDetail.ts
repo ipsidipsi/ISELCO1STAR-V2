@@ -2,6 +2,7 @@ import { ref, onUnmounted } from 'vue'
 import { useTicketStore } from '@/stores/tickets'
 import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
+import { useNotificationStore } from '@/stores/notifications'
 import api from '@/services/api'
 
 /**
@@ -12,6 +13,7 @@ import api from '@/services/api'
 export function useTicketDetail(ticketId: number) {
     const ticketStore = useTicketStore()
     const authStore = useAuthStore()
+    const notifStore = useNotificationStore()
     const { showSuccess, showError, showConfirm, showLoading, close, showInfo } = useNotification()
 
     const loading = ref(false)
@@ -25,6 +27,9 @@ export function useTicketDetail(ticketId: number) {
         try {
             const response = await api.get(`/tickets/${ticketId}`)
             ticket.value = response.data
+
+            // Smart Read: Mark notifications for this ticket as read since user is viewing it
+            notifStore.markTicketAsRead(ticketId)
 
             // Start listening for updates
             subscribeToUpdates()
@@ -72,8 +77,12 @@ export function useTicketDetail(ticketId: number) {
             }
         }
 
-        // 3. Show notification if action was done by someone else
+        // 3. Handle notifications
         if (activity.user_id !== authStore.user?.id) {
+            // If user is viewing the page, mark the notification as read immediately
+            // to prevent the bell from lighting up for a ticket they are looking at.
+            notifStore.markTicketAsRead(ticketId)
+
             const description = activity.description
                 ? activity.description
                 : 'Ticket updated'

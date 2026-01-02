@@ -14,9 +14,12 @@
             </div>
           </div>
           
-          <ion-button fill="clear" @click="handleLogout" class="glass-button">
-            <ion-icon :icon="logOutOutline" class="text-gray-700"></ion-icon>
-          </ion-button>
+          <div class="flex items-center">
+            <NotificationBell class="mr-2" />
+            <ion-button fill="clear" @click="handleLogout" class="glass-button">
+              <ion-icon :icon="logOutOutline" class="text-gray-700"></ion-icon>
+            </ion-button>
+          </div>
         </div>
       </ion-toolbar>
     </ion-header>
@@ -89,21 +92,29 @@
 
             <!-- Pending Verification Card -->
             <div @click="navigateToTickets('pending_verification')" class="glass-card card-purple clickable">
-              <ion-icon :icon="timeOutline" class="text-purple-600 text-5xl mb-3"></ion-icon>
-              <div>
-                <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Pending Verification</p>
-                <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.pending_verification || 0 }}</p>
-                <p class="text-xs text-gray-600 mt-1">Waiting for approval</p>
+              <div class="flex items-center justify-between">
+                <div class="flex-1">
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Pending Verification</p>
+                  <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.pending_verification || 0 }}</p>
+                  <p class="text-xs text-gray-600 mt-1">Waiting for approval</p>
+                </div>
+                <div class="icon-glow icon-purple">
+                  <ion-icon :icon="timeOutline" class="text-2xl text-purple-600"></ion-icon>
+                </div>
               </div>
             </div>
 
             <!-- Closed Card (Completed) -->
             <div @click="navigateToTickets('closed')" class="glass-card card-green clickable">
-              <ion-icon :icon="checkmarkDoneCircleOutline" class="text-green-600 text-5xl mb-3"></ion-icon>
-              <div>
-                <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-1">Completed</p>
-                <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.closed || 0 }}</p>
-                <p class="text-xs text-gray-600 mt-1">Successfully closed</p>
+              <div class="flex items-center justify-between">
+                <div class="flex-1">
+                  <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Completed</p>
+                  <p class="text-5xl font-extrabold text-navy-700 leading-none">{{ stats.closed || 0 }}</p>
+                  <p class="text-xs text-gray-600 mt-1">Successfully closed</p>
+                </div>
+                <div class="icon-glow icon-green">
+                   <ion-icon :icon="checkmarkDoneCircleOutline" class="text-2xl text-green-600"></ion-icon>
+                </div>
               </div>
             </div>
 
@@ -197,7 +208,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   IonPage, IonHeader, IonToolbar, IonContent, IonButton, 
@@ -213,9 +224,14 @@ import { useAuthStore } from '@/stores/auth'
 import { useTickets } from '@/composables/useTickets'
 import CreateTicketModal from '@/components/CreateTicketModal.vue'
 
+// Import Notification Bell
+import NotificationBell from '@/components/NotificationBell.vue'
+import { useNotification } from '@/composables/useNotification'
+
 const router = useRouter()
 const authStore = useAuthStore()
 const { stats, tickets, loading, loadStats, loadTickets } = useTickets()
+const { showInfo } = useNotification()
 
 const user = computed(() => authStore.user)
 const showCreateModal = ref(false)
@@ -257,11 +273,48 @@ const formatTempRoleExpiry = computed(() => {
   })
 })
 
+// Listen for real-time dashboard updates
+function subscribeToDashboardUpdates() {
+    if (!user.value?.id) return
+
+    // Listen to the user's private channel (same as notifications)
+    // When a notification arrives (TicketUpdated), it affects stats/lists
+    const channelName = `App.Models.User.${user.value.id}`
+    
+    console.log(`Dashboard subscribing to ${channelName}`)
+    window.Echo.private(channelName)
+        .notification((notification: any) => {
+            console.log('Dashboard: Event received, refreshing stats...', notification)
+            
+            // Refresh data
+            loadStats()
+            loadTickets({ limit: 5 })
+        })
+}
+
+function unsubscribeDashboard() {
+    // Optional: Since same channel is used by NotificationStore, 
+    // leaving it might affect the Bell if they share the specific listener instance.
+    // Laravel Echo usually multiplexes, but to be safe, we can just leave it if we are sure.
+    // Or better, just rely on the component unmount.
+
+     if (!user.value?.id) return
+     // If we leave, we might break the notification store listener if using same echo instance?
+     // Echo multiplexes channels, so leaving here will stop ALL listeners on this channel.
+     // BETTER STRATEGY: Do not leave channel globally if other components need it.
+     // But typically we should cleanup. 
+     // For now, let's just let it be or use a specific event listener removal if Echo supports it (Echo.leave stops all).
+     
+     // Actually, we can't easily remove *just* this callback without digging into Echo internals.
+     // So we'll skip explicit unsubscribe here to avoid killing the Bell's connection.
+}
+
 onMounted(async () => {
   await Promise.all([
     loadStats(),
     loadTickets({ limit: 5 })
   ])
+  subscribeToDashboardUpdates()
 })
 
 async function handleLogout() {
