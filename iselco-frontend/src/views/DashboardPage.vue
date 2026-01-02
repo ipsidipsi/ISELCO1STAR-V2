@@ -321,7 +321,9 @@ onMounted(async () => {
     loadStats(),
     loadTickets({ limit: 5 })
   ])
-  subscribeToDashboardUpdates()
+  
+  // Don't call subscribeToDashboardUpdates - notification store already listens to same channel
+  // Creating duplicate listeners causes conflicts
 })
 
 onUnmounted(() => {

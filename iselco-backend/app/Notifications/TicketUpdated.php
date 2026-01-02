@@ -12,9 +12,7 @@ use Illuminate\Notifications\Notification;
 
 class TicketUpdated extends Notification implements ShouldBroadcastNow
 {
-    // use Queueable; // Optional, but usually good to keep if we re-add queue later, but for sync we can just ignore it or keep it. 
-    // Actually, Queueable trait is fine, but removing ShouldQueue interface is key.
-    use Queueable;
+    // Removed Queueable trait to ensure immediate broadcast without queue interference
 
     public $ticket;
     public $actor; // The user who performed the action
@@ -72,5 +70,16 @@ class TicketUpdated extends Notification implements ShouldBroadcastNow
             'created_at' => now(),
             'read_at' => null,
         ]);
+    }
+
+    /**
+     * Get the channels the event should broadcast on.
+     * This is REQUIRED for notifications to actually broadcast
+     */
+    public function broadcastOn(): array
+    {
+        // Return empty array - Laravel will use the notifiable's receivesBroadcastNotificationsOn() method
+        // or default to private-App.Models.User.{id}
+        return [];
     }
 }
