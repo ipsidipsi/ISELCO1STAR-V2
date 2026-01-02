@@ -242,6 +242,10 @@ export const useNotificationStore = defineStore('notifications', () => {
         notifications.value.unshift(newNotif)
         unreadCount.value++
 
+        console.log('[Notifications] Real-time notification received (Standard):', newNotif)
+        console.log('[Notifications] Updated unread count:', unreadCount.value)
+        console.log('[Notifications] Total notifications:', notifications.value.length)
+
         // Don't trigger notifications if muted
         if (preferences.value.is_muted) {
             console.log('[Notifications] Notification muted', newNotif.data.ticket_number)
@@ -266,13 +270,13 @@ export const useNotificationStore = defineStore('notifications', () => {
 
     function playNotificationSound() {
         try {
-            const audio = new Audio('/notification.mp3')
+            const audio = new Audio('/notification.wav')
             audio.volume = 0.5
-            audio.play().catch(error => {
-                console.log('[Notifications] Sound play failed (user interaction may be required)', error)
+            audio.play().catch((err: Error) => {
+                console.warn('[Notifications] Sound play failed (user interaction may be required)', err)
             })
         } catch (error) {
-            console.error('[Notifications] Failed to play sound', error)
+            console.warn('[Notifications] Sound initialization failed', error)
         }
     }
 

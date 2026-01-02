@@ -123,6 +123,21 @@ class TicketActivityLogger
         
         if ($recipients->isNotEmpty()) {
             Notification::send($recipients, new TicketUpdated($ticket, $actor, $actionType, $message));
+            
+            // Manual broadcast workaround - since Laravel notification broadcasting is broken,
+            // we broadcast directly like the chat system does (which works)
+            foreach ($recipients as $recipient) {
+                $latestNotification = $recipient->notifications()->latest()->first();
+                if ($latestNotification) {
+                    broadcast(new \App\Events\NotificationCreated([
+                        'id' => $latestNotification->id,
+                        'type' => $latestNotification->type,
+                        'data' => $latestNotification->data,
+                        'read_at' => $latestNotification->read_at,
+                        'created_at' => $latestNotification->created_at->toISOString(),
+                    ], $recipient->id));
+                }
+            }
         }
     }
 
@@ -183,6 +198,20 @@ class TicketActivityLogger
         
         if ($recipients->isNotEmpty()) {
             Notification::send($recipients, new TicketUpdated($ticket, $actor, $actionType, $message));
+            
+            // Manual broadcast workaround
+            foreach ($recipients as $recipient) {
+                $latestNotification = $recipient->notifications()->latest()->first();
+                if ($latestNotification) {
+                    broadcast(new \App\Events\NotificationCreated([
+                        'id' => $latestNotification->id,
+                        'type' => $latestNotification->type,
+                        'data' => $latestNotification->data,
+                        'read_at' => $latestNotification->read_at,
+                        'created_at' => $latestNotification->created_at->toISOString(),
+                    ], $recipient->id));
+                }
+            }
         }
     }
 

@@ -52,7 +52,11 @@
           <!-- Statistics Cards with glass effect -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
             <!-- Pending Tickets -->
-            <div @click="navigateToTickets('pending')" class="glass-card card-blue clickable">
+            <div @click="navigateToTickets('pending')" class="glass-card card-blue clickable relative">
+              <!-- Loading overlay -->
+              <div v-if="loading" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+                <ion-spinner name="crescent" class="text-blue-600"></ion-spinner>
+              </div>
               <div class="flex items-center justify-between">
                 <div class="flex-1">
                   <p class="text-xs uppercase tracking-wide text-gray-600 font-semibold mb-2">Pending Tickets</p>
@@ -208,7 +212,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   IonPage, IonHeader, IonToolbar, IonContent, IonButton, 
@@ -322,8 +326,15 @@ onMounted(async () => {
     loadTickets({ limit: 5 })
   ])
   
-  // Don't call subscribeToDashboardUpdates - notification store already listens to same channel
-  // Creating duplicate listeners causes conflicts
+  // Watch for notification changes to auto-refresh dashboard
+  watch(() => notificationStore.unreadCount, (newCount, oldCount) => {
+    // Only refresh if count increased (new notification arrived)
+    if (newCount > oldCount) {
+      console.log('[Dashboard] New notification detected, refreshing stats...')
+      loadStats()
+      loadTickets({ limit: 5 })
+    }
+  })
 })
 
 onUnmounted(() => {
