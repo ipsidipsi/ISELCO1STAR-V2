@@ -165,6 +165,12 @@
                 <span class="text-sm font-medium">Users</span>
               </button>
               
+              <!-- Category Management - Only for admins -->
+              <button v-if="isAdmin" @click="goToCategories" class="action-button action-orange">
+                <ion-icon :icon="settingsOutline" class="text-3xl mb-2"></ion-icon>
+                <span class="text-sm font-medium">Categories</span>
+              </button>
+              
               <button @click="goToSettings" class="action-button action-gray">
                 <ion-icon :icon="settingsOutline" class="text-3xl mb-2"></ion-icon>
                 <span class="text-sm font-medium">Settings</span>
@@ -397,6 +403,10 @@ function goToUsers() {
   router.push('/users')
 }
 
+function goToCategories() {
+  router.push('/admin/categories')
+}
+
 function goToTicketDetail(id: number) {
   router.push(`/tickets/${id}`)
 }
@@ -599,6 +609,11 @@ function formatDate(date: string) {
 .action-purple {
   background: linear-gradient(135deg, rgba(147, 51, 234, 0.2) 0%, rgba(147, 51, 234, 0.05) 100%);
   color: #7C3AED;
+}
+
+.action-orange {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.2) 0%, rgba(249, 115, 22, 0.05) 100%);
+  color: #EA580C;
 }
 
 .action-gray {

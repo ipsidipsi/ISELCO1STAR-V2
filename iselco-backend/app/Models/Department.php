@@ -17,4 +17,12 @@ class Department extends Model
         'is_active' => 'boolean',
         'synced_at' => 'datetime',
     ];
+
+    /**
+     * Get categories belonging to this department
+     */
+    public function categories()
+    {
+        return $this->hasMany(Category::class);
+    }
 }

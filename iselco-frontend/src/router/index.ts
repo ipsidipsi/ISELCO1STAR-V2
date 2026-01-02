@@ -27,12 +27,6 @@ const routes: Array<RouteRecordRaw> = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/tickets',
-    name: 'Tickets',
-    component: () => import('../views/TicketListPage.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
     path: '/tickets/:id',
     name: 'TicketDetail',
     component: () => import('../views/TicketDetailPage.vue'),
@@ -43,6 +37,12 @@ const routes: Array<RouteRecordRaw> = [
     name: 'ChangePassword',
     component: () => import('../views/ChangePasswordPage.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/categories',
+    name: 'CategoryManagement',
+    component: () => import('../views/CategoryManagementPage.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/users',
@@ -65,6 +65,19 @@ router.beforeEach((to, from, next) => {
     next('/login')
   } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
     next('/dashboard')
+  } else if (to.meta.requiresAdmin) {
+    // Check if user has admin role
+    const userRoles = authStore.user?.roles || []
+    const isAdmin = userRoles.some((role: any) =>
+      role.slug === 'superadmin' || role.slug === 'department_admin'
+    )
+
+    if (!isAdmin) {
+      // Redirect non-admins to dashboard
+      next('/dashboard')
+    } else {
+      next()
+    }
   } else {
     next()
   }

@@ -126,4 +126,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/users/{id}/terminate', [UserController::class, 'terminate']);
     Route::post('/users/{id}/reactivate', [UserController::class, 'reactivate']);
     Route::get('/users/{id}/status-history', [UserController::class, 'getStatusHistory']);
+
+    //------------------------------------------------------------
+    // Admin: Category & Priority Management
+    //------------------------------------------------------------
+    // Route::middleware('role:superadmin|department_admin')->group(function () {
+        // Categories - Special endpoints MUST come before apiResource
+        Route::get('/admin/categories/orphaned', [App\Http\Controllers\Api\CategoryController::class, 'orphaned']);
+        Route::post('/admin/categories/bulk-reassign', [App\Http\Controllers\Api\CategoryController::class, 'bulkReassign']);
+        Route::post('/admin/categories/{id}/convert-to-global', [App\Http\Controllers\Api\CategoryController::class, 'convertToGlobal']);
+        
+        // Categories - CRUD
+        Route::apiResource('admin/categories', App\Http\Controllers\Api\CategoryController::class);
+        
+        // Priorities - CRUD
+        Route::apiResource('admin/priorities', App\Http\Controllers\Api\PriorityController::class);
+        
+        // Departments - Sync Status
+        Route::get('/admin/departments/sync-status', [MetadataController::class, 'departmentSyncStatus']);
+    // });
 });

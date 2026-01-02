@@ -66,4 +66,39 @@ class MetadataController extends Controller
 
         return response()->json($priorities);
     }
+
+    /**
+     * Get department sync status
+     * 
+     * GET /api/admin/departments/sync-status
+     * Returns: Department sync information with affected category counts
+     */
+    public function departmentSyncStatus()
+    {
+        $totalDepartments = Department::count();
+        $activeDepartments = Department::where('is_active', true)->count();
+        $inactiveDepartments = Department::where('is_active', false)->count();
+        
+        // Get last sync timestamp
+        $lastSync = Department::max('synced_at');
+        
+        // Get inactive departments with affected category counts
+        $inactiveDepartmentsWithCategories = Department::where('is_active', false)
+            ->withCount(['categories' => function ($query) {
+                $query->where('is_active', true);
+            }])
+            ->get();
+        
+        $affectedCategories = $inactiveDepartmentsWithCategories->sum('categories_count');
+
+        return response()->json([
+            'total_departments' => $totalDepartments,
+            'active_departments' => $activeDepartments,
+            'inactive_departments' => $inactiveDepartments,
+            'last_synced_at' => $lastSync,
+            'affected_categories' => $affectedCategories,
+            'inactive_departments_detail' => $inactiveDepartmentsWithCategories
+        ]);
+    }
 }
+
