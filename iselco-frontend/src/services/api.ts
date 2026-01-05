@@ -34,8 +34,13 @@ api.interceptors.response.use(
     (error) => {
         if (error.response?.status === 401) {
             // Unauthorized - clear auth and redirect to login
-            const authStore = useAuthStore()
-            authStore.logout()
+            // BUT prevent infinite loop if the request itself was /logout
+            const isLogoutRequest = error.config.url?.endsWith('/logout') || error.config.url?.endsWith('/login')
+
+            if (!isLogoutRequest) {
+                const authStore = useAuthStore()
+                authStore.logout()
+            }
         }
         return Promise.reject(error)
     }

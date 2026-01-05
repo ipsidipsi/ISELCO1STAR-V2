@@ -21,7 +21,7 @@
       <div v-else-if="ticket" class="max-w-6xl mx-auto space-y-4">
         
         <!-- Collapsible Sections with Ionic Accordion -->
-        <ion-accordion-group :value="['details', 'timeline', 'comments']">
+        <ion-accordion-group :value="['details', 'timeline', 'comments']" multiple="true">
           
           <!-- Ticket Details Section -->
           <ion-accordion value="details" class="glass-card mb-4">
@@ -157,7 +157,7 @@
         </div>
 
         <!-- Collapsible Sections with Ionic Accordion -->
-        <ion-accordion-group :value="['timeline', 'comments']">
+        <ion-accordion-group :value="['timeline', 'comments']" multiple="true">
           
           <!-- Timeline Section -->
           <ion-accordion value="timeline" class="glass-card mb-4">

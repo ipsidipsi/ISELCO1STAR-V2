@@ -35,18 +35,30 @@ class TicketController extends Controller
 
         // Apply role-based filtering
         if (!$user->isSuperadmin()) {
-            if ($user->isDepartmentAdmin()) {
-                // Department admin: filter by accessible departments
-                $accessibleDepartmentIds = $user->getAccessibleDepartmentIds();
-                $query->whereIn('department_id', $accessibleDepartmentIds);
-            } else {
-                // Normal user: tickets they created, assigned to them, OR any unassigned tickets
-                $query->where(function ($q) use ($user) {
-                    $q->where('requestor_id', $user->id)      // Tickets they created
-                      ->orWhere('assigned_to_id', $user->id)  // Tickets assigned to them
-                      ->orWhereNull('assigned_to_id');        // Any unassigned tickets (can accept)
-                });
-            }
+            $query->where(function($q) use ($user) {
+                // ALWAYS show tickets I created or am assigned to
+                $q->where('requestor_id', $user->id)
+                  ->orWhere('assigned_to_id', $user->id);
+
+                // If Department Admin, ALSO show tickets in my departments
+                if ($user->isDepartmentAdmin()) {
+                    $accessibleDepartmentIds = $user->getAccessibleDepartmentIds();
+                    $q->orWhereIn('department_id', $accessibleDepartmentIds);
+                }
+                
+                // If Normal User (not Dept Admin), ALSO show unassigned tickets (to allow picking them up if capable)
+                // Note: This logic assumes normal users might validly see unassigned tickets (e.g. techs).
+                // If pure end-users shouldn't see unassigned tickets, this might need refinement,
+                // but we preserve existing behavior here.
+                if (!$user->isDepartmentAdmin()) {
+                     $q->orWhereNull('assigned_to_id');
+                }
+            });
+        }
+
+        // Filter by user's own requests
+        if ($request->has('requested_by_me') && $request->requested_by_me == 'true') {
+            $query->where('requestor_id', $user->id);
         }
 
         // Filter by status (supports comma-separated values)

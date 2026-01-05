@@ -2,17 +2,15 @@
   <ion-page>
     <!-- Header with subtle glass effect -->
     <ion-header class="glass-header">
-      <ion-toolbar class="px-4 bg-transparent">
-        <div class="flex items-center justify-between py-2">
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 bg-gradient-to-br from-teal to-teal-600 rounded-full flex items-center justify-center shadow-lg">
-              <ion-icon :icon="ticketOutline" class="text-xl text-white"></ion-icon>
+      <ion-toolbar class="dashboard-header">
+          <div class="flex items-center justify-between px-4 py-2">
+            <div class="flex items-center gap-3">
+              <ion-icon :icon="ticketOutline" class="text-2xl text-teal-600"></ion-icon>
+              <div>
+                <h1 class="text-xl font-bold text-navy-700">Dashboard</h1>
+                <p class="text-sm text-gray-600">Welcome, {{authStore.user?.employee_name || authStore.user?.username}}</p>
+              </div>
             </div>
-            <div>
-              <h1 class="text-xl font-bold text-navy-700">Dashboard</h1>
-              <p class="text-sm text-gray-600">Welcome, {{ user?.employee_name || user?.username }}</p>
-            </div>
-          </div>
           
           <div class="flex items-center">
             <NotificationBell class="mr-2" />
@@ -26,7 +24,7 @@
 
     <!-- Content with gradient background -->
     <ion-content :fullscreen="true" class="gradient-bg">
-      <div class="p-4 max-w-7xl mx-auto">
+      <div class="p-6 md:p-8 max-w-[1600px] mx-auto">
         
         <!-- Temporary Role Notification Banner -->
         <div v-if="hasTemporaryRoles" class="temp-role-notification mb-6">
@@ -44,11 +42,11 @@
           </div>
 
           <!-- Statistics Cards with glass effect -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <!-- Pending Tickets -->
             <div @click="navigateToTickets('pending')" class="glass-card card-blue clickable relative">
               <!-- Loading overlay -->
-              <div v-if="cardLoading.pending" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+              <div v-if="loading" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
                 <ion-spinner name="crescent" class="text-blue-600"></ion-spinner>
               </div>
               <div class="flex items-center justify-between">
@@ -64,7 +62,7 @@
 
             <!-- Assigned to Me -->
             <div @click="navigateToTickets('assigned')" class="glass-card card-teal clickable relative">
-              <div v-if="cardLoading.assigned" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+              <div v-if="loading" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
                 <ion-spinner name="crescent" class="text-teal-600"></ion-spinner>
               </div>
               <div class="flex items-center justify-between">
@@ -80,7 +78,7 @@
 
             <!-- In Progress -->
             <div @click="navigateToTickets('in_progress')" class="glass-card card-yellow clickable relative">
-              <div v-if="cardLoading.inProgress" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+              <div v-if="loading" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
                 <ion-spinner name="crescent" class="text-yellow-600"></ion-spinner>
               </div>
               <div class="flex items-center justify-between">
@@ -96,7 +94,7 @@
 
             <!-- Pending Verification Card -->
             <div @click="navigateToTickets('pending_verification')" class="glass-card card-purple clickable relative">
-              <div v-if="cardLoading.verification" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+              <div v-if="loading" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
                 <ion-spinner name="crescent" class="text-purple-600"></ion-spinner>
               </div>
               <div class="flex items-center justify-between">
@@ -113,7 +111,7 @@
 
             <!-- Closed Card (Completed) -->
             <div @click="navigateToTickets('closed')" class="glass-card card-green clickable relative">
-              <div v-if="cardLoading.closed" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+              <div v-if="loading" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
                 <ion-spinner name="crescent" class="text-green-600"></ion-spinner>
               </div>
               <div class="flex items-center justify-between">
@@ -130,7 +128,7 @@
 
             <!-- My Requests -->
             <div @click="navigateToTickets('my_requests')" class="glass-card card-purple clickable relative">
-              <div v-if="cardLoading.myRequests" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+              <div v-if="loading" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
                 <ion-spinner name="crescent" class="text-purple-600"></ion-spinner>
               </div>
               <div class="flex items-center justify-between">
@@ -145,9 +143,9 @@
             </div>
           </div>
 
-          <!-- Quick Actions with glass effect -->
-          <div class="glass-card mb-6">
-            <h2 class="text-lg font-semibold text-navy-700 mb-4">Quick Actions</h2>
+          <!-- Quick Actions -->
+          <div class="glass-card mb-8">
+            <h2 class="text-xl font-bold text-navy-700 mb-6">Quick Actions</h2>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <button @click="openCreateTicket" class="action-button action-teal">
                 <ion-icon :icon="addCircleOutline" class="text-3xl mb-2"></ion-icon>
@@ -170,11 +168,6 @@
                 <ion-icon :icon="settingsOutline" class="text-3xl mb-2"></ion-icon>
                 <span class="text-sm font-medium">Categories</span>
               </button>
-              
-              <button @click="goToSettings" class="action-button action-gray">
-                <ion-icon :icon="settingsOutline" class="text-3xl mb-2"></ion-icon>
-                <span class="text-sm font-medium">Settings</span>
-              </button>
             </div>
           </div>
 
@@ -182,16 +175,29 @@
           <div class="glass-card">
             <h2 class="text-lg font-semibold text-navy-700 mb-4">Recent Tickets</h2>
             
-            <div v-if="tickets.length === 0" class="text-center py-8 text-gray-500">
-              No tickets found. Create your first ticket!
+            <div v-if="loading && tickets.length === 0" class="space-y-3">
+              <!-- Skeleton loaders -->
+              <div v-for="i in 3" :key="i" class="glass-card p-4">
+                <div class="animate-pulse flex items-center gap-3">
+                  <div class="h-10 w-10 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+                  <div class="flex-1 space-y-2">
+                    <div class="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div>
+                    <div class="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="tickets.length === 0" class="text-center py-12 glass-card">
+              <p class="text-gray-500 dark:text-gray-400">No recent tickets</p>
             </div>
 
             <div v-else class="space-y-3">
               <div 
                 v-for="ticket in tickets.slice(0, 5)" 
                 :key="ticket.id"
-                class="ticket-item cursor-pointer"
-                @click="goToTicketDetail(ticket.id)"
+                @click="viewTicket(ticket.id)"
+                class="glass-card p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group"
               >
                 <div class="flex-1">
                   <div class="flex items-center space-x-2">
@@ -230,13 +236,16 @@ import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   IonPage, IonHeader, IonToolbar, IonContent, IonButton, 
-  IonIcon, IonSpinner 
+  IonIcon, IonSpinner, IonTitle, IonRefresher, IonRefresherContent,
+  IonChip, IonSearchbar, IonCard, IonCardHeader, IonCardTitle,
+  IonCardContent, IonBadge, IonSkeletonText
 } from '@ionic/vue'
 import {
   ticketOutline, logOutOutline, documentsOutline, personOutline,
   timeOutline, checkmarkCircleOutline, addCircleOutline, listOutline,
   statsChartOutline, settingsOutline, chevronForwardOutline, peopleOutline,
-  shieldCheckmarkOutline, createOutline, checkmarkDoneCircleOutline
+  shieldCheckmarkOutline, createOutline, checkmarkDoneCircleOutline,
+  hourglassOutline, alertCircleOutline, arrowForward, funnelOutline, searchOutline
 } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 import { useTickets } from '@/composables/useTickets'
@@ -248,28 +257,17 @@ import { useNotification } from '@/composables/useNotification'
 import { useNotificationStore } from '@/stores/notifications'
 
 const router = useRouter()
+
 const authStore = useAuthStore()
 const { stats, tickets, loading, loadStats, loadTickets } = useTickets()
 const { showInfo } = useNotification()
 const notificationStore = useNotificationStore()
 
-// Individual loading states for each card
-const cardLoading = ref({
-  pending: false,
-  assigned: false,
-  inProgress: false,
-  verification: false,
-  closed: false,
-  myRequests: false
-})
-
-const user = computed(() => authStore.user)
 const showCreateModal = ref(false)
 
-// Check if user is admin (superadmin or department_admin)
+// Role checks
 const isAdmin = computed(() => {
-  const userRoles = authStore.user?.roles || []
-  return userRoles.some((role: any) => 
+  return authStore.user?.roles?.some((role: any) => 
     role.slug === 'superadmin' || role.slug === 'department_admin'
   )
 })
@@ -305,11 +303,11 @@ const formatTempRoleExpiry = computed(() => {
 
 // Listen for real-time dashboard updates
 function subscribeToDashboardUpdates() {
-    if (!user.value?.id) return
+    if (!authStore.user?.id) return
 
     // Listen to the user's private channel (same as notifications)
     // When a notification arrives (TicketUpdated), it affects stats/lists
-    const channelName = `App.Models.User.${user.value.id}`
+    const channelName = `App.Models.User.${authStore.user.id}`
     
     console.log(`Dashboard subscribing to ${channelName}`)
     window.Echo.private(channelName)
@@ -328,7 +326,7 @@ function unsubscribeDashboard() {
     // Laravel Echo usually multiplexes, but to be safe, we can just leave it if we are sure.
     // Or better, just rely on the component unmount.
 
-     if (!user.value?.id) return
+     if (!authStore.user?.id) return
      // If we leave, we might break the notification store listener if using same echo instance?
      // Echo multiplexes channels, so leaving here will stop ALL listeners on this channel.
      // BETTER STRATEGY: Do not leave channel globally if other components need it.
@@ -340,11 +338,6 @@ function unsubscribeDashboard() {
 }
 
 onMounted(async () => {
-  // Initialize notification store listener FIRST
-  notificationStore.initializeListener()
-  notificationStore.fetchUnreadCount()
-  notificationStore.fetchPreferences()
-  
   await Promise.all([
     loadStats(),
     loadTickets({ limit: 5 })
@@ -356,21 +349,9 @@ onMounted(async () => {
     if (newCount > oldCount) {
       console.log('[Dashboard] New notification detected, refreshing stats...')
       
-      // Animate all cards briefly
-      Object.keys(cardLoading.value).forEach(key => {
-        cardLoading.value[key as keyof typeof cardLoading.value] = true
-      })
-      
-      // Fetch new stats
+      // Fetch new stats (loading state is handled by the composable)
       loadStats()
       loadTickets({ limit: 5 })
-      
-      // Hide spinners after brief delay
-      setTimeout(() => {
-        Object.keys(cardLoading.value).forEach(key => {
-          cardLoading.value[key as keyof typeof cardLoading.value] = false
-        })
-      }, 500)
     }
   })
 })
@@ -399,6 +380,37 @@ function goToTickets() {
   router.push('/tickets')
 }
 
+function navigateToTickets(filterType: string) {
+  const query: Record<string, string> = {}
+  
+  switch (filterType) {
+    case 'pending':
+      query.status = 'new,seen,reopened'
+      break
+    case 'assigned':
+      query.assigned_to_me = 'true'
+      query.exclude_status = 'in_progress'
+      break
+    case 'in_progress':
+      query.assigned_to_me = 'true'
+      query.status = 'in_progress'
+      break
+    case 'pending_verification':
+      query.assigned_to_me = 'true'
+      query.status = 'resolved'
+      break
+    case 'closed':
+      query.assigned_to_me = 'true'
+      query.status = 'closed'
+      break
+    case 'my_requests':
+      query.requested_by_me = 'true'
+      break
+  }
+  
+  router.push({ path: '/tickets', query })
+}
+
 function goToUsers() {
   router.push('/users')
 }
@@ -407,7 +419,12 @@ function goToCategories() {
   router.push('/admin/categories')
 }
 
-function goToTicketDetail(id: number) {
+// function goToSettings() {
+//   router.push('/settings')
+// }
+
+
+function viewTicket(id: number) {
   router.push(`/tickets/${id}`)
 }
 
@@ -416,23 +433,7 @@ function goToReports() {
   console.log('Navigate to reports')
 }
 
-function goToSettings() {
-  // TODO: Navigate to settings page
-  console.log('Navigate to settings')
-}
 
-function navigateToTickets(filter: string) {
-  const routes: Record<string, any> = {
-    pending: { path: '/tickets', query: { status: 'new,seen,reopened' } },
-    assigned: { path: '/tickets', query: { assigned_to_me: 'true', exclude_status: 'in_progress,closed' } },
-    in_progress: { path: '/tickets', query: { assigned_to_me: 'true', status: 'in_progress' } },
-    pending_verification: { path: '/tickets', query: { assigned_to_me: 'true', status: 'resolved' } },
-    closed: { path: '/tickets', query: { assigned_to_me: 'true', status: 'closed' } },
-    my_requests: { path: '/tickets', query: { requested_by_me: 'true' } },
-  }
-  
-  router.push(routes[filter])
-}
 
 function getStatusClass(status: string) {
   const classes: Record<string, string> = {
@@ -587,13 +588,15 @@ function formatDate(date: string) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 1rem;
+  justify-content: center;
+  padding: 1.5rem;
   border-radius: 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.3);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   transition: all 0.3s ease;
   cursor: pointer;
+  min-height: 120px;
 }
 
 .action-teal {
