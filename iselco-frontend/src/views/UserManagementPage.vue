@@ -44,6 +44,14 @@
           <ion-label>
             <h2>{{ user.employee_name || user.username }}</h2>
             <p>@{{ user.username }}</p>
+            
+            <!-- Departments -->
+            <div v-if="user.departments && user.departments.length > 0" class="user-meta">
+              <ion-badge v-for="dept in user.departments" :key="dept.id" color="primary" class="dept-badge">
+                {{ dept.name }}
+              </ion-badge>
+            </div>
+            
             <div class="user-meta">
               <!-- Permanent Roles -->
               <ion-badge v-for="role in user.roles" :key="role.id" 
@@ -105,14 +113,12 @@
           <ion-input v-model="newUser.mobile_number" type="tel" placeholder="Enter mobile"></ion-input>
         </ion-item>
 
-        <ion-item>
-          <ion-label position="stacked">Department</ion-label>
-          <ion-select v-model="newUser.department_id" placeholder="Select department">
-            <ion-select-option v-for="dept in departments" :key="dept.id" :value="dept.id">
-              {{ dept.name }}
-            </ion-select-option>
-          </ion-select>
-        </ion-item>
+        <DepartmentMultiSelect
+          v-model="selectedDepartments"
+          :departments="departments"
+          label="Departments *"
+          placeholder="Select departments"
+        />
 
 
         <ion-item>
@@ -171,14 +177,12 @@
             <ion-input v-model="editingUser.mobile_number" type="tel" placeholder="Enter mobile"></ion-input>
           </ion-item>
 
-          <ion-item>
-            <ion-label position="stacked">Primary Department</ion-label>
-            <ion-select v-model="editingUser.department_id" placeholder="Select department">
-              <ion-select-option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                {{ dept.name }}
-              </ion-select-option>
-            </ion-select>
-          </ion-item>
+          <DepartmentMultiSelect
+            v-model="editUserDepartments"
+            :departments="departments"
+            label="Departments *"
+            placeholder="Select departments"
+          />
 
           <ion-item>
             <ion-label>Roles</ion-label>
@@ -273,7 +277,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons, IonBackButton,
   IonButton, IonIcon, IonList, IonItem, IonLabel, IonAvatar, IonBadge,
@@ -285,6 +289,7 @@ import {
 import { addOutline, ellipsisVerticalOutline, personRemove, lockClosed, checkmarkCircle, timeOutline } from 'ionicons/icons';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
+import DepartmentMultiSelect from '@/components/DepartmentMultiSelect.vue';
 
 const searchQuery = ref('');
 const selectedStatus = ref('all');
@@ -328,10 +333,22 @@ const newUser = ref({
 });
 
 const selectedRoles = ref<number[]>([]);
+const selectedDepartments = ref<number[]>([]); // Multi-department selection
 
 const passwordMismatch = computed(() => {
   if (!newUser.value.confirm_password) return false;
   return newUser.value.password !== newUser.value.confirm_password;
+});
+
+// Computed for "Select All Departments" checkbox state (Create Modal)
+const allDepartmentsSelected = computed(() => {
+  return departments.value.length > 0 && selectedDepartments.value.length === departments.value.length;
+});
+
+// Computed for "Select All Departments" checkbox state (Edit Modal)
+const editUserDepartments = ref<number[]>([]);
+const allEditDepartmentsSelected = computed(() => {
+  return departments.value.length > 0 && editUserDepartments.value.length === departments.value.length;
 });
 
 const filteredUsers = computed(() => {
@@ -435,11 +452,12 @@ const createUser = async () => {
 
   try {
     // Don't send confirm_password to API
-    const { confirm_password, ...userData } = newUser.value;
+    const { confirm_password, department_id, ...userData } = newUser.value;
     
     await api.post('/users', {
       ...userData,
-      role_ids: selectedRoles.value
+      role_ids: selectedRoles.value,
+      department_ids: selectedDepartments.value // Send department array
     });
 
     const toast = await toastController.create({
@@ -459,6 +477,7 @@ const createUser = async () => {
       confirm_password: ''
     };
     selectedRoles.value = [];
+    selectedDepartments.value = [];
     await loadUsers();
   } catch (error: any) {
     const toast = await toastController.create({
@@ -729,6 +748,8 @@ const loadMore = (event: any) => {
 const viewUser = (user: any) => {
   // Open edit modal with user data
   editingUser.value = { ...user };
+  // Load user's departments
+  editUserDepartments.value = user.departments?.map((d: any) => d.id) || [];
   editUserRoles.value = user.roles?.map((r: any) => r.id) || [];
   showEditModal.value = true;
 };
@@ -751,7 +772,7 @@ const updateUser = async () => {
     await api.put(`/users/${editingUser.value.id}`, {
       employee_name: editingUser.value.employee_name,
       mobile_number: editingUser.value.mobile_number,
-      department_id: editingUser.value.department_id,
+      department_ids: editUserDepartments.value, // Send department array
     });
 
     // Update roles
@@ -789,6 +810,61 @@ const toggleRole = (roleId: number) => {
   }
 };
 
+// Department toggle functions for Create Modal
+const toggleDepartment = (deptId: number) => {
+  const index = selectedDepartments.value.indexOf(deptId);
+  if (index > -1) {
+    selectedDepartments.value.splice(index, 1);
+  } else {
+    selectedDepartments.value.push(deptId);
+  }
+};
+
+const toggleAllDepartments = () => {
+  if (allDepartmentsSelected.value) {
+    // Unselect all
+    selectedDepartments.value = [];
+  } else {
+    // Select all
+    selectedDepartments.value = departments.value.map(d => d.id);
+  }
+};
+
+// Department toggle functions for Edit Modal
+const toggleEditUserDepartment = (deptId: number) => {
+  const index = editUserDepartments.value.indexOf(deptId);
+  if (index > -1) {
+    editUserDepartments.value.splice(index, 1);
+  } else {
+    editUserDepartments.value.push(deptId);
+  }
+};
+
+const toggleAllEditDepartments = () => {
+  if (allEditDepartmentsSelected.value) {
+    // Unselect all
+    editUserDepartments.value = [];
+  } else {
+    // Select all
+    editUserDepartments.value = departments.value.map(d => d.id);
+  }
+};
+
+// Watch for modal openings to refresh departments
+watch(showCreateModal, async (isOpen) => {
+  if (isOpen) {
+    // Force refresh departments when create modal opens
+    await loadDepartments();
+  }
+});
+
+watch(showEditModal, async (isOpen) => {
+  if (isOpen) {
+    // Force refresh departments when edit modal opens
+    await loadDepartments();
+  }
+});
+
 onMounted(async () => {
   await Promise.all([loadUsers(), loadDepartments(), loadRoles()]);
 });
@@ -808,17 +884,32 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--ion-color-primary);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-weight: bold;
-  font-size: 18px;
+  font-size: 1.25rem;
 }
 
 .user-meta {
   display: flex;
-  gap: 4px;
+  gap: 0.5rem;
   flex-wrap: wrap;
   margin-top: 4px;
+}
+
+.dept-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.temp-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.temp-icon {
+  font-size: 0.875rem;
 }
 
 .add-user-button {
@@ -840,8 +931,19 @@ onMounted(async () => {
   vertical-align: middle;
 }
 
+.select-all-btn {
+  --padding-start: 0;
+  --padding-end: 0;
+  font-size: 0.875rem;
+  text-transform: none;
+}
+
 @keyframes pulseGlow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(245, 158, 11, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.8);
+  }
 }
 </style>

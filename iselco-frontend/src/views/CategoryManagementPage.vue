@@ -225,9 +225,9 @@
               <h2 class="text-lg font-semibold text-navy-700">Departments (External Sync)</h2>
               <p class="text-sm text-gray-600">View-only - Synced from external API</p>
             </div>
-            <ion-button @click="loadSyncStatus()" color="primary" fill="outline">
+            <ion-button @click="loadSyncStatus()" color="primary" fill="outline" :disabled="syncLoading">
               <ion-icon :icon="refreshOutline" slot="start"></ion-icon>
-              Refresh Status
+              {{ syncLoading ? 'Syncing...' : 'Sync Now' }}
             </ion-button>
           </div>
 
@@ -342,8 +342,8 @@ import PriorityFormModal from '@/components/PriorityFormModal.vue'
 const router = useRouter()
 const { categories, loading: categoriesLoading, fetchCategories, deleteCategory, convertToGlobal } = useCategories()
 const { priorities, loading: prioritiesLoading, fetchPriorities, deletePriority } = usePriorities()
-const { syncStatus, loading: syncLoading, fetchSyncStatus } = useDepartmentSync()
-const { showSuccess, showError, showWarning } = useNotification()
+const { syncStatus, loading: syncLoading, fetchSyncStatus, triggerSync } = useDepartmentSync()
+const { showSuccess, showError, showWarning, showInfo } = useNotification()
 
 // Departments state
 const departments = ref<Array<{ id: number; name: string; code: string; is_active: boolean }>>([])
@@ -492,11 +492,13 @@ async function loadDepartments() {
 
 async function loadSyncStatus() {
   try {
-    await fetchSyncStatus()
+    showInfo('Syncing departments from external API...')
+    await triggerSync()
     await loadDepartments()
-    showSuccess('Sync status refreshed')
-  } catch (error) {
-    showError('Failed to load sync status')
+    await fetchSyncStatus()
+    showSuccess('Departments synced successfully!')
+  } catch (error: any) {
+    showError(error.response?.data?.message || 'Failed to sync departments')
   }
 }
 

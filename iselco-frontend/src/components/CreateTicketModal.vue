@@ -362,13 +362,17 @@ const selectedPriorityInfo = computed(() => {
 })
 
 onMounted(async () => {
-  if (departments.value.length === 0) {
-    await metadataStore.fetchAllMetadata()
-  }
+  // Force fetch fresh metadata to ensure latest categories and departments
+  await metadataStore.fetchAllMetadata()
 })
 
-watch(() => props.isOpen, (newVal) => {
+watch(() => props.isOpen, async (newVal) => {
   if (newVal) {
+    // Force refresh categories and departments when modal opens
+    await Promise.all([
+      metadataStore.fetchCategories(),
+      metadataStore.fetchDepartments()
+    ])
     resetForm()
   }
 })

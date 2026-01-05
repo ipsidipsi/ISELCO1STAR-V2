@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Schedule expired role revocation (runs daily at midnight)
 Schedule::command('roles:revoke-expired')->daily();
+
+// Schedule department sync (runs daily at 2 AM)
+Schedule::command('sync:departments')->dailyAt('02:00');

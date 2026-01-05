@@ -40,10 +40,37 @@ export function useDepartmentSync() {
         }
     }
 
+    /**
+     * Manually trigger department sync from external API
+     */
+    async function triggerSync() {
+        loading.value = true
+        error.value = null
+
+        try {
+            const response = await api.post('/admin/departments/sync')
+            syncStatus.value = {
+                total_departments: response.data.total_departments,
+                active_departments: response.data.active_departments,
+                inactive_departments: 0,
+                last_synced_at: response.data.last_synced_at,
+                affected_categories: 0,
+                inactive_departments_detail: []
+            }
+            return response.data
+        } catch (err: any) {
+            error.value = err.response?.data?.message || 'Failed to trigger sync'
+            throw err
+        } finally {
+            loading.value = false
+        }
+    }
+
     return {
         syncStatus,
         loading,
         error,
-        fetchSyncStatus
+        fetchSyncStatus,
+        triggerSync
     }
 }

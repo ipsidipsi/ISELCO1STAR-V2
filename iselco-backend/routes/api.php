@@ -144,5 +144,8 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Departments - Sync Status
         Route::get('/admin/departments/sync-status', [MetadataController::class, 'departmentSyncStatus']);
+        
+        // Departments - Manual Sync Trigger
+        Route::post('/admin/departments/sync', [MetadataController::class, 'syncDepartments']);
     // });
 });

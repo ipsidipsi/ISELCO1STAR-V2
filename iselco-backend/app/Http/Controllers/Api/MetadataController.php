@@ -100,5 +100,39 @@ class MetadataController extends Controller
             'inactive_departments_detail' => $inactiveDepartmentsWithCategories
         ]);
     }
+
+    /**
+     * Manually trigger department sync
+     * 
+     * POST /api/admin/departments/sync
+     * Returns: Sync results
+     */
+    public function syncDepartments()
+    {
+        try {
+            // Run the sync command programmatically
+            \Illuminate\Support\Facades\Artisan::call('sync:departments');
+            
+            $output = \Illuminate\Support\Facades\Artisan::output();
+            
+            // Refresh counts
+            $totalDepartments = Department::count();
+            $activeDepartments = Department::where('is_active', true)->count();
+            $lastSync = Department::max('synced_at');
+
+            return response()->json([
+                'message' => 'Department sync completed successfully',
+                'total_departments' => $totalDepartments,
+                'active_departments' => $activeDepartments,
+                'last_synced_at' => $lastSync,
+                'output' => $output
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Sync failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
 

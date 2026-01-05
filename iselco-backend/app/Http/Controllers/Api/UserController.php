@@ -23,7 +23,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $currentUser = auth()->user();
-        $query = User::with(['roles', 'temporaryRoles', 'department']);
+        $query = User::with(['roles', 'temporaryRoles', 'department', 'departments']);
 
         // Department Admin: Only see users in their department(s)
         if ($currentUser->hasRole('department_admin') && !$currentUser->hasRole('superadmin')) {
@@ -44,8 +44,15 @@ class UserController extends Controller
         }
 
         // Filter by department (if specified in request)
+        // Check both primary department AND department assignments (many-to-many)
         if ($request->has('department_id')) {
-            $query->where('department_id', $request->department_id);
+            $departmentId = $request->department_id;
+            $query->where(function($q) use ($departmentId) {
+                $q->where('department_id', $departmentId)
+                  ->orWhereHas('departments', function($deptQuery) use ($departmentId) {
+                      $deptQuery->where('departments.id', $departmentId);
+                  });
+            });
         }
 
         // Search by name, username, or employee name
@@ -93,6 +100,8 @@ class UserController extends Controller
             'mobile_number' => 'nullable|string|unique:users,mobile_number',
             'empbadge_number' => 'nullable|string|unique:users,empbadge_number',
             'department_id' => 'nullable|exists:departments,id',
+            'department_ids' => 'nullable|array',
+            'department_ids.*' => 'exists:departments,id',
             'password' => 'required|string|min:4',
             'role_ids' => 'required|array',
             'role_ids.*' => 'exists:roles,id',
@@ -113,8 +122,13 @@ class UserController extends Controller
         // Assign roles
         $user->roles()->attach($request->role_ids);
 
+        // Assign departments if provided
+        if ($request->has('department_ids') && is_array($request->department_ids)) {
+            $user->departments()->sync($request->department_ids);
+        }
+
         // Load relationships for response
-        $user->load(['roles', 'department']);
+        $user->load(['roles', 'department', 'departments']);
 
         return response()->json($user, 201);
     }
@@ -158,6 +172,8 @@ class UserController extends Controller
             'employee_name' => 'sometimes|string',
             'mobile_number' => 'sometimes|nullable|string|unique:users,mobile_number,' . $id,
             'department_id' => 'sometimes|nullable|exists:departments,id',
+            'department_ids' => 'sometimes|array',
+            'department_ids.*' => 'exists:departments,id',
             'role_ids' => 'sometimes|array',
             'role_ids.*' => 'exists:roles,id',
         ]);
@@ -170,7 +186,12 @@ class UserController extends Controller
             $user->roles()->sync($request->role_ids);
         }
 
-        $user->load(['roles', 'department']);
+        // Update departments if provided
+        if ($request->has('department_ids')) {
+            $user->departments()->sync($request->department_ids);
+        }
+
+        $user->load(['roles', 'department', 'departments']);
 
         return response()->json($user);
     }
