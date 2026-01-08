@@ -47,11 +47,16 @@ class TicketController extends Controller
                 }
                 
                 // If Normal User (not Dept Admin), ALSO show unassigned tickets (to allow picking them up if capable)
-                // Note: This logic assumes normal users might validly see unassigned tickets (e.g. techs).
-                // If pure end-users shouldn't see unassigned tickets, this might need refinement,
-                // but we preserve existing behavior here.
+                // BUT EXCLUDE "Forgot Password" tickets (Category ID 1 or dynamic check)
                 if (!$user->isDepartmentAdmin()) {
-                     $q->orWhereNull('assigned_to_id');
+                     // Get Forgot Password category ID
+                     $forgotPwdCategory = \App\Models\Category::where('name', 'Forgot Password')->first();
+                     $forgotPwdId = $forgotPwdCategory ? $forgotPwdCategory->id : 1;
+
+                     $q->orWhere(function($subQ) use ($forgotPwdId) {
+                        $subQ->whereNull('assigned_to_id')
+                             ->where('category_id', '!=', $forgotPwdId);
+                     });
                 }
             });
         }
@@ -596,5 +601,64 @@ class TicketController extends Controller
             ->get();
 
         return response()->json($activities);
+    }
+
+    /**
+     * Reset user password (from ticket)
+     * 
+     * POST /api/tickets/{id}/reset-password
+     */
+    public function resetPassword(Request $request, $id)
+    {
+        $user = $request->user();
+        
+        // Only Dept Admin and Superadmin can reset passwords
+        if (!$user->isDepartmentAdmin() && !$user->isSuperadmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $ticket = Ticket::findOrFail($id);
+        $targetUser = $ticket->requestor; // The user who needs password reset
+
+        if (!$targetUser) {
+            return response()->json(['error' => 'User not found in this ticket'], 404);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Reset password to 1234
+            $targetUser->update([
+                'password' => \Illuminate\Support\Facades\Hash::make('1234'),
+                'must_change_password' => true, // Force change on next login
+            ]);
+
+            // Log activity: Password Reset
+            TicketTimeline::create([
+                'ticket_id' => $ticket->id,
+                'status_from' => $ticket->status,
+                'status_to' => 'resolved',
+                'user_id' => $user->id,
+                'notes' => 'Password reset to default (1234) by admin.',
+                'created_at' => now(),
+            ]);
+
+            // Auto-resolve the ticket
+            $ticket->update([
+                'status' => 'resolved',
+                'resolved_at' => now(),
+            ]);
+
+             // Log activity
+            TicketActivityLogger::logResolved($ticket, $user, 'Password reset by admin.');
+            TicketActivityLogger::logStatusChange($ticket, $ticket->status, 'resolved', $user);
+
+            DB::commit();
+
+            return response()->json(['message' => 'Password reset successfully to 1234', 'ticket' => $ticket]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to reset password: ' . $e->getMessage()], 500);
+        }
     }
 }

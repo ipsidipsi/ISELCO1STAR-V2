@@ -102,7 +102,7 @@ class UserController extends Controller
             'department_id' => 'nullable|exists:departments,id',
             'department_ids' => 'nullable|array',
             'department_ids.*' => 'exists:departments,id',
-            'password' => 'required|string|min:4',
+            // 'password' => 'required|string|min:4', // Removed: Default is 1234
             'role_ids' => 'required|array',
             'role_ids.*' => 'exists:roles,id',
         ]);
@@ -114,7 +114,7 @@ class UserController extends Controller
             'mobile_number' => $request->mobile_number,
             'empbadge_number' => $request->empbadge_number,
             'department_id' => $request->department_id,
-            'password' => Hash::make($request->password),
+            'password' => Hash::make('1234'), // Default password
             'is_active' => true,
             'must_change_password' => true, // Force password change on first login
         ]);

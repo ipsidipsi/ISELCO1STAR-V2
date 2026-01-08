@@ -95,6 +95,10 @@
       </div>
     </ion-content>
   </ion-page>
+  <ForgotPasswordModal 
+    v-model:is-open="isForgotPasswordOpen" 
+    @close="isForgotPasswordOpen = false"
+  />
 </template>
 
 <script setup lang="ts">
@@ -102,6 +106,7 @@ import { ref } from 'vue'
 import { IonPage, IonContent, IonInput, IonIcon, IonSpinner } from '@ionic/vue'
 import { ticketOutline } from 'ionicons/icons'
 import { useAuth } from '@/composables/useAuth'
+import ForgotPasswordModal from '@/components/auth/ForgotPasswordModal.vue'
 
 // Composable for auth logic
 const { login, loading, errorMessage, errors } = useAuth()
@@ -110,14 +115,14 @@ const { login, loading, errorMessage, errors } = useAuth()
 const loginValue = ref('')
 const password = ref('')
 const showPassword = ref(false)
+const isForgotPasswordOpen = ref(false)
 
 async function handleLogin() {
   await login(loginValue.value, password.value)
 }
 
 function openForgotPassword() {
-  // TODO: Implement forgot password modal
-  console.log('Open forgot password modal')
+  isForgotPasswordOpen.value = true
 }
 </script>
 

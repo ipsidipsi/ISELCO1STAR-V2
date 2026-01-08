@@ -74,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/tickets/{id}/verify', [TicketController::class, 'verify']);
     Route::post('/tickets/{id}/reject', [TicketController::class, 'reject']);
     Route::post('/tickets/{id}/reopen', [TicketController::class, 'reopen']);
+    Route::post('/tickets/{id}/reset-password', [TicketController::class, 'resetPassword']);
     
     // Tickets - Timeline/Activities
     Route::get('/tickets/{id}/activities', [TicketController::class, 'getActivities']);

@@ -138,7 +138,7 @@ class AuthController extends Controller
         // Prevent using '1234' as password - it's meant to be temporary only
         if ($request->new_password === '1234') {
             throw ValidationException::withMessages([
-                'new_password' => ['Cannot use "1234" as your password. Please choose a different password.'],
+                'new_password' => ['1234 cant be use as password please input another'],
             ]);
         }
 
@@ -170,17 +170,28 @@ class AuthController extends Controller
             'mobile_number' => 'nullable|string',
         ]);
 
+        // Find the user to ensure they exist and get their ID
+        $user = User::where('username', $request->username)->first();
+
         // Create password reset ticket
+        // Find "Forgot Password" category dynamically
+        $category = \App\Models\Category::where('name', 'Forgot Password')->first();
+        $categoryId = $category ? $category->id : 1; // Fallback to 1 if not found
+
         $ticket = \App\Models\Ticket::create([
             'ticket_number' => 'PWD-' . date('Ymd') . '-' . str_pad(\App\Models\Ticket::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT),
-            'title' => 'Password Reset Request',
-            'description' => "Username: {$request->username}\nEmployee Name: {$request->employee_name}\nMobile Number: {$request->mobile_number}",
+            'title' => "Password reset request for user " . $request->employee_name . ", " . ($request->mobile_number ?? 'No Mobile'),
+            'description' => "Username: {$request->username}\nEmployee Name: {$request->employee_name}\nMobile Number: {$request->mobile_number}\n\nRequesting password reset to default (1234).",
             'status' => 'new',
             'priority_id' => 4, // Critical
-            'category_id' => 1, // Assuming "Password Reset" category exists
+            'category_id' => $categoryId, 
             'department_id' => $request->department_id,
-            'requestor_id' => 1, // System user or find by username
+            'requestor_id' => $user ? $user->id : 1, // Link to actual user if found, else System User (1)
         ]);
+
+        // Log activity and notify admins
+        // This is crucial for alert notifications
+        \App\Services\TicketActivityLogger::logCreated($ticket, $user ?: \App\Models\User::find(1));
 
         return response()->json([
             'message' => 'Password reset request submitted. An administrator will process your request soon.',

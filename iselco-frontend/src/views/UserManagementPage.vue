@@ -121,17 +121,7 @@
         />
 
 
-        <ion-item>
-          <ion-label position="stacked">Password *</ion-label>
-          <ion-input v-model="newUser.password" type="password" placeholder="Enter password"></ion-input>
-          <ion-note slot="helper">Minimum 4 characters</ion-note>
-        </ion-item>
 
-        <ion-item>
-          <ion-label position="stacked">Confirm Password *</ion-label>
-          <ion-input v-model="newUser.confirm_password" type="password" placeholder="Re-enter password"></ion-input>
-          <ion-note slot="error" v-if="passwordMismatch">Passwords do not match</ion-note>
-        </ion-item>
 
         <ion-item>
           <ion-label>Roles *</ion-label>
@@ -328,17 +318,18 @@ const newUser = ref({
   employee_name: '',
   mobile_number: '',
   department_id: null,
-  password: '',
-  confirm_password: '',
+  department_id: null,
+  password: '', // Kept for type safety if needed, but unused in UI
+  confirm_password: '', // Kept for type safety if needed, but unused in UI
 });
 
 const selectedRoles = ref<number[]>([]);
 const selectedDepartments = ref<number[]>([]); // Multi-department selection
 
-const passwordMismatch = computed(() => {
-  if (!newUser.value.confirm_password) return false;
-  return newUser.value.password !== newUser.value.confirm_password;
-});
+// const passwordMismatch = computed(() => {
+//   if (!newUser.value.confirm_password) return false;
+//   return newUser.value.password !== newUser.value.confirm_password;
+// });
 
 // Computed for "Select All Departments" checkbox state (Create Modal)
 const allDepartmentsSelected = computed(() => {
@@ -427,25 +418,25 @@ const loadRoles = async () => {
 
 const createUser = async () => {
   // Validate passwords
-  if (!newUser.value.password || newUser.value.password.length < 4) {
-    const toast = await toastController.create({
-      message: 'Password must be at least 4 characters',
-      duration: 3000,
-      color: 'warning'
-    });
-    await toast.present();
-    return;
-  }
+  // if (!newUser.value.password || newUser.value.password.length < 4) {
+  //   const toast = await toastController.create({
+  //     message: 'Password must be at least 4 characters',
+  //     duration: 3000,
+  //     color: 'warning'
+  //   });
+  //   await toast.present();
+  //   return;
+  // }
 
-  if (newUser.value.password !== newUser.value.confirm_password) {
-    const toast = await toastController.create({
-      message: 'Passwords do not match',
-      duration: 3000,
-      color: 'warning'
-    });
-    await toast.present();
-    return;
-  }
+  // if (newUser.value.password !== newUser.value.confirm_password) {
+  //   const toast = await toastController.create({
+  //     message: 'Passwords do not match',
+  //     duration: 3000,
+  //     color: 'warning'
+  //   });
+  //   await toast.present();
+  //   return;
+  // }
 
   const loading = await loadingController.create({ message: 'Creating user...' });
   await loading.present();
@@ -460,9 +451,12 @@ const createUser = async () => {
       department_ids: selectedDepartments.value // Send department array
     });
 
+    // Get department name for success message
+    const deptName = departments.value.find(d => selectedDepartments.value.includes(d.id))?.name || 'Department';
+
     const toast = await toastController.create({
-      message: 'User created successfully',
-      duration: 2000,
+      message: `User ${newUser.value.employee_name} has been created for ${deptName} with defaultuser 1234`,
+      duration: 5000, // Longer duration to read the message
       color: 'success'
     });
     await toast.present();

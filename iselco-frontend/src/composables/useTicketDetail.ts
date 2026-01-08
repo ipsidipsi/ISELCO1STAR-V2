@@ -267,6 +267,35 @@ export function useTicketDetail(ticketId: number) {
         }
     }
 
+    /**
+     * Reset user password (admin)
+     */
+    async function resetPassword() {
+        const result = await showConfirm(
+            'Reset Password?',
+            'This will reset the user\'s password to "1234". This action cannot be undone.',
+            'Reset Password',
+            'Cancel'
+        )
+
+        if (!result.isConfirmed) return
+
+        showLoading('Resetting Password...', 'Please wait')
+
+        try {
+            await api.post(`/tickets/${ticketId}/reset-password`)
+            close()
+            await showSuccess(
+                'Password Reset Successful',
+                'The user\'s password has been reset to "1234". The ticket is now resolved.'
+            )
+            await loadTicket()
+        } catch (error: any) {
+            close()
+            await showError('Failed to Reset Password', error.response?.data?.message || 'Could not reset password')
+        }
+    }
+
     return {
         ticket,
         loading,
@@ -278,5 +307,6 @@ export function useTicketDetail(ticketId: number) {
         rejectTicket,
         reassignTicket,
         reopenTicket,
+        resetPassword,
     }
 }

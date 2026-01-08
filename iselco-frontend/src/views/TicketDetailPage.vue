@@ -21,7 +21,7 @@
       <div v-else-if="ticket" class="max-w-6xl mx-auto space-y-4">
         
         <!-- Collapsible Sections with Ionic Accordion -->
-        <ion-accordion-group :value="['details', 'timeline', 'comments']" multiple="true">
+        <ion-accordion-group :value="['details', 'timeline', 'comments']" :multiple="true">
           
           <!-- Ticket Details Section -->
           <ion-accordion value="details" class="glass-card mb-4">
@@ -153,11 +153,22 @@
               <ion-icon :icon="peopleOutline" class="mr-2"></ion-icon>
               Reassign
             </button>
+
+             <!-- Reset Password Button (Admin for Password Reset tickets) -->
+            <button
+              v-if="canResetPassword"
+              @click="resetPassword"
+              class="px-6 py-3 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
+            >
+              <ion-icon :icon="keyOutline" class="mr-2"></ion-icon>
+              Reset Password (1234)
+            </button>
           </div>
         </div>
 
         <!-- Collapsible Sections with Ionic Accordion -->
-        <ion-accordion-group :value="['timeline', 'comments']" multiple="true">
+        <ion-accordion-group :value="['timeline', 'comments']" :multiple="true">
+
           
           <!-- Timeline Section -->
           <ion-accordion value="timeline" class="glass-card mb-4">
@@ -245,7 +256,7 @@ import {
 import {
   arrowBackOutline, checkmarkCircleOutline, playCircleOutline, checkmarkDoneOutline,
   shieldCheckmarkOutline, closeCircleOutline, peopleOutline, timeOutline,
-  chatbubblesOutline, attachOutline, chevronDownOutline, chevronUpOutline
+  chatbubblesOutline, attachOutline, chevronDownOutline, chevronUpOutline, keyOutline
 } from 'ionicons/icons'
 import { useTicketDetail } from '@/composables/useTicketDetail'
 import { useAuthStore } from '@/stores/auth'
@@ -268,6 +279,7 @@ const {
   resolveTicket,
   verifyTicket,
   rejectTicket,
+  resetPassword,
 } = useTicketDetail(ticketId)
 
 onMounted(async () => {
@@ -298,6 +310,11 @@ const canResolve = computed(() => (isAdmin.value || isAssignee.value) && ticket.
 const canVerify = computed(() => (isAdmin.value || isRequestor.value) && ticket.value?.status === 'resolved')
 const canReject = computed(() => (isAdmin.value || isRequestor.value) && ticket.value?.status === 'resolved')
 const canReassign = computed(() => isAdmin.value && ticket.value?.status !== 'closed')
+const canResetPassword = computed(() => {
+  return isAdmin.value && 
+         ticket.value?.category?.name === 'Forgot Password' &&
+         ticket.value?.status !== 'closed'
+})
 
 // UI Helpers
 function getStatusClass(status: string) {
