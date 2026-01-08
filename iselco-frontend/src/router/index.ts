@@ -45,10 +45,16 @@ const routes: Array<RouteRecordRaw> = [
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
-    path: '/users',
+    path: '/admin/reports',
+    name: 'Reports',
+    component: () => import('@/views/ReportsPage.vue'),
+    meta: { requiresAuth: true, roles: ['superadmin', 'department_admin'] }
+  },
+  {
+    path: '/admin/users',
     name: 'UserManagement',
-    component: () => import('../views/UserManagementPage.vue'),
-    meta: { requiresAuth: true }
+    component: () => import('@/views/UserManagementPage.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   }
 ]
 

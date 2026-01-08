@@ -168,6 +168,12 @@
                 <ion-icon :icon="settingsOutline" class="text-3xl mb-2"></ion-icon>
                 <span class="text-sm font-medium">Categories</span>
               </button>
+
+              <!-- Reports - Only for admins -->
+              <button v-if="isAdmin" @click="goToReports" class="action-button action-teal">
+                <ion-icon :icon="statsChartOutline" class="text-3xl mb-2"></ion-icon>
+                <span class="text-sm font-medium">Reports</span>
+              </button>
             </div>
           </div>
 
@@ -412,7 +418,7 @@ function navigateToTickets(filterType: string) {
 }
 
 function goToUsers() {
-  router.push('/users')
+  router.push('/admin/users')
 }
 
 function goToCategories() {
@@ -429,8 +435,7 @@ function viewTicket(id: number) {
 }
 
 function goToReports() {
-  // TODO: Navigate to reports page
-  console.log('Navigate to reports')
+  router.push('/admin/reports')
 }
 
 

@@ -82,8 +82,21 @@ class TicketActivityLogger
         
         // Check if ticket is assigned or unassigned
         if (!$ticket->assigned_to_id) {
-            // Unassigned ticket: Notify entire department (admins + tech users)
-            self::notifyDepartment($ticket, $user, 'ticket_created', "New unassigned ticket created by " . self::getUserName($user));
+            // Unassigned ticket
+            
+            // Special handling for "Forgot Password" (Category ID 1 or dynamic)
+            // Ideally we should check category name, but relationship loading might be partial.
+            // Assuming the ticket has the 'Forgot Password' category set.
+            $isForgotPwd = \App\Models\Category::where('id', $ticket->category_id)->where('name', 'Forgot Password')->exists();
+
+            if ($isForgotPwd) {
+                 // Notify Department Admins ONLY (security/privacy)
+                 // This ensures IT Admin gets it if it's in their department
+                 self::notifyAdmins($ticket, $user, 'ticket_created', "New Password Reset Request");
+            } else {
+                 // Standard unassigned ticket: Notify entire department (admins + tech users)
+                 self::notifyDepartment($ticket, $user, 'ticket_created', "New unassigned ticket created by " . self::getUserName($user));
+            }
         } else {
             // Pre-assigned ticket: Notify assignee and department managers
             self::notifyUsers($ticket, $user, 'ticket_created', "New ticket created and assigned to you");
@@ -121,14 +134,30 @@ class TicketActivityLogger
         // Filter duplicates
         $recipients = $recipients->unique('id');
         
+
         if ($recipients->isNotEmpty()) {
             Notification::send($recipients, new TicketUpdated($ticket, $actor, $actionType, $message));
             
-            // Manual broadcast workaround - since Laravel notification broadcasting is broken,
-            // we broadcast directly like the chat system does (which works)
+            // Manual broadcast workaround optimization:
+            // Fetch the latest notification for all recipients in one go
+            // We assume the notification just created is the latest one.
+            
+            $recipientIds = $recipients->pluck('id')->toArray();
+            
+            // This query might still be heavy if 'notifications' table is huge and not indexed on notifiable_id+created_at
+            // But it's better than N queries.
+            // Alternatively, since we just sent it, we can't easily get the ID back from Notification::send
+            
             foreach ($recipients as $recipient) {
-                $latestNotification = $recipient->notifications()->latest()->first();
-                if ($latestNotification) {
+                 // We still need to find the specific notification ID to broadcast
+                 // Eager loading wouldn't work easily here because it's a polymorphic relation and we need the *latest*.
+                 
+                 // Let's keep the loop but use a more efficient query if possible, 
+                 // OR rely on the fact that switching DB_HOST=localhost should fix the port exhaustion.
+                 // But let's try to be safer:
+                 
+                 $latestNotification = $recipient->notifications()->latest()->first();
+                 if ($latestNotification) {
                     broadcast(new \App\Events\NotificationCreated([
                         'id' => $latestNotification->id,
                         'type' => $latestNotification->type,

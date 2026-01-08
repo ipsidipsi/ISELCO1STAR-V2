@@ -304,6 +304,12 @@ export const useNotificationStore = defineStore('notifications', () => {
                 console.log('Real-time notification received (Direct Class):', e);
                 handleRealTimeNotification(e);
             })
+            // Listen for the manual broadcast workaround event (NotificationCreated)
+            // It broadcastsAs 'notification'
+            .listen('.notification', (e: any) => {
+                console.log('Real-time notification received (Manual Workaround):', e);
+                handleRealTimeNotification(e);
+            })
             .error((error: any) => {
                 console.error('Echo Notification Error:', error);
             });

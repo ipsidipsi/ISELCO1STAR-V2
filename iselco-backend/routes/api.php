@@ -140,6 +140,14 @@ Route::middleware('auth:sanctum')->group(function () {
         // Categories - CRUD
         Route::apiResource('admin/categories', App\Http\Controllers\Api\CategoryController::class);
         
+        // Department Management (Admin)
+    Route::apiResource('departments', \App\Http\Controllers\Api\DepartmentController::class);
+
+    // Reports Module
+    Route::get('/reports', [\App\Http\Controllers\Api\ReportController::class, 'index']);
+    Route::get('/reports/analytics', [\App\Http\Controllers\Api\ReportController::class, 'analytics']);
+    Route::get('/reports/export', [\App\Http\Controllers\Api\ReportController::class, 'export']);
+        
         // Priorities - CRUD
         Route::apiResource('admin/priorities', App\Http\Controllers\Api\PriorityController::class);
         

@@ -287,32 +287,37 @@ onMounted(async () => {
 })
 
 // Permission checks
-const isAdmin = computed(() => authStore.user?.roles?.some(r => r.slug === 'admin'))
+// Permission checks
+const isAdmin = computed(() => authStore.user?.roles?.some(r => r.slug === 'superadmin' || r.slug === 'department_admin'))
 const isRequestor = computed(() => ticket.value?.requestor_id === authStore.user?.id)
 const isAssignee = computed(() => ticket.value?.assigned_to_id === authStore.user?.id)
+const isForgotPasswordTicket = computed(() => ticket.value?.category?.name === 'Forgot Password')
 
 const canPerformActions = computed(() => {
   // Show actions if user is admin, requestor, assignee, OR can accept unassigned tickets
   return isAdmin.value || isRequestor.value || isAssignee.value || !ticket.value?.assigned_to_id
 })
 const canAccept = computed(() => {
+  if (isForgotPasswordTicket.value) return false // No accept for forgot pwd
   // Show accept button for unassigned tickets (new, seen, or reopened) - but not for requestor
   return !ticket.value?.assigned_to_id && 
          ['new', 'seen', 'reopened'].includes(ticket.value?.status || '') && 
          !isRequestor.value
 })
 const canStart = computed(() => {
+  if (isForgotPasswordTicket.value) return false
   // Can start if assigned or reopened (and is admin/assignee)
   return (isAdmin.value || isAssignee.value) && 
          (ticket.value?.status === 'assigned' || ticket.value?.status === 'reopened')
 })
-const canResolve = computed(() => (isAdmin.value || isAssignee.value) && ticket.value?.status === 'in_progress')
-const canVerify = computed(() => (isAdmin.value || isRequestor.value) && ticket.value?.status === 'resolved')
-const canReject = computed(() => (isAdmin.value || isRequestor.value) && ticket.value?.status === 'resolved')
-const canReassign = computed(() => isAdmin.value && ticket.value?.status !== 'closed')
+const canResolve = computed(() => !isForgotPasswordTicket.value && (isAdmin.value || isAssignee.value) && ticket.value?.status === 'in_progress')
+const canVerify = computed(() => !isForgotPasswordTicket.value && (isAdmin.value || isRequestor.value) && ticket.value?.status === 'resolved')
+const canReject = computed(() => !isForgotPasswordTicket.value && (isAdmin.value || isRequestor.value) && ticket.value?.status === 'resolved')
+const canReassign = computed(() => !isForgotPasswordTicket.value && isAdmin.value && ticket.value?.status !== 'closed')
+
 const canResetPassword = computed(() => {
   return isAdmin.value && 
-         ticket.value?.category?.name === 'Forgot Password' &&
+         isForgotPasswordTicket.value &&
          ticket.value?.status !== 'closed'
 })
 

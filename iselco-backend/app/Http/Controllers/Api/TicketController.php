@@ -47,7 +47,7 @@ class TicketController extends Controller
                 }
                 
                 // If Normal User (not Dept Admin), ALSO show unassigned tickets (to allow picking them up if capable)
-                // BUT EXCLUDE "Forgot Password" tickets (Category ID 1 or dynamic check)
+                // BUT EXCLUDE "Forgot Password" tickets for normal users (security)
                 if (!$user->isDepartmentAdmin()) {
                      // Get Forgot Password category ID
                      $forgotPwdCategory = \App\Models\Category::where('name', 'Forgot Password')->first();
@@ -57,6 +57,12 @@ class TicketController extends Controller
                         $subQ->whereNull('assigned_to_id')
                              ->where('category_id', '!=', $forgotPwdId);
                      });
+                } else {
+                    // For Department Admins:
+                    // We already added "tickets in my departments" via $accessibleDepartmentIds logic above.
+                    // However, we explicitly want to make sure Forgot Password tickets are included if they fall in their dept.
+                    // The existing logic covers it: $q->orWhereIn('department_id', $accessibleDepartmentIds);
+                    // But to be safe and explicit, we ensure that unlike normal users, we DO NOT filter them out.
                 }
             });
         }
@@ -642,15 +648,16 @@ class TicketController extends Controller
                 'created_at' => now(),
             ]);
 
-            // Auto-resolve the ticket
+            // Auto-close the ticket (as per user request)
             $ticket->update([
-                'status' => 'resolved',
-                'resolved_at' => now(),
+                'status' => 'closed',
+                'closed_at' => now(),
+                'resolved_at' => now(), // Set resolved_at as well for record keeping
             ]);
 
              // Log activity
-            TicketActivityLogger::logResolved($ticket, $user, 'Password reset by admin.');
-            TicketActivityLogger::logStatusChange($ticket, $ticket->status, 'resolved', $user);
+            TicketActivityLogger::logResolved($ticket, $user, 'Password reset by admin. Ticket closed.');
+            TicketActivityLogger::logStatusChange($ticket, $ticket->status, 'closed', $user);
 
             DB::commit();
 

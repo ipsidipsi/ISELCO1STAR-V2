@@ -164,19 +164,53 @@ class AuthController extends Controller
     public function forgotPassword(Request $request)
     {
         $request->validate([
-            'username' => 'required|string',
+            'username' => 'required|string|exists:users,username',
             'employee_name' => 'required|string',
-            'department_id' => 'required|exists:departments,id',
             'mobile_number' => 'nullable|string',
         ]);
 
-        // Find the user to ensure they exist and get their ID
+        // Find the user (now guaranteed to exist)
         $user = User::where('username', $request->username)->first();
+        
+        // Check for valid department. 
+        // User reports that users table department_id is null, so we must use the relationship.
+        $userDept = $user->activeDepartments()->first();
+        $userDeptId = $userDept ? $userDept->id : null;
 
-        // Create password reset ticket
-        // Find "Forgot Password" category dynamically
-        $category = \App\Models\Category::where('name', 'Forgot Password')->first();
-        $categoryId = $category ? $category->id : 1; // Fallback to 1 if not found
+        // If user has no active department linked...
+        if (!$userDeptId) {
+             // Fallback: This is a data quality issue (User exists but has no dept).
+             // We fallback to first department as a safety net.
+             $fallbackDept = \App\Models\Department::first();
+             $userDeptId = $fallbackDept ? $fallbackDept->id : null;
+             
+             if (!$userDeptId) {
+                 return response()->json(['message' => 'System Error: No departments defined in the system. Please contact admin.'], 500);
+             }
+        }
+
+        // Check for spam: Prevent multiple open password reset requests
+        $pendingTicket = \App\Models\Ticket::where('requestor_id', $user->id)
+            ->whereHas('category', function($q) {
+                $q->where('name', 'Forgot Password');
+            })
+            ->whereIn('status', ['new', 'assigned', 'in_progress']) // Open statuses
+            ->first();
+
+        if ($pendingTicket) {
+             return response()->json([
+                 'message' => 'You already have a pending password reset request (Ticket #' . $pendingTicket->ticket_number . '). Please wait for it to be processed.',
+                 'ticket_number' => $pendingTicket->ticket_number
+             ], 429); // 429 Too Many Requests
+        }
+
+        // Find "Forgot Password" category
+        // We moved this block back here because it was accidentally removed, causing "Undefined variable"
+        $category = \App\Models\Category::firstOrCreate(
+            ['name' => 'Forgot Password'],
+            ['description' => 'Tickets for password reset requests', 'is_active' => true]
+        );
+        $categoryId = $category->id;
 
         $ticket = \App\Models\Ticket::create([
             'ticket_number' => 'PWD-' . date('Ymd') . '-' . str_pad(\App\Models\Ticket::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT),
@@ -185,7 +219,7 @@ class AuthController extends Controller
             'status' => 'new',
             'priority_id' => 4, // Critical
             'category_id' => $categoryId, 
-            'department_id' => $request->department_id,
+            'department_id' => $userDeptId,
             'requestor_id' => $user ? $user->id : 1, // Link to actual user if found, else System User (1)
         ]);
 

@@ -41,23 +41,6 @@
             ></ion-input>
           </div>
 
-          <!-- Department Selection -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Department <span class="text-red-500">*</span>
-            </label>
-            <select
-              v-model="form.department_id"
-              class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-teal focus:border-transparent bg-white"
-              required
-            >
-              <option value="" disabled selected>Select your department</option>
-              <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                {{ dept.name }} ({{ dept.code }})
-              </option>
-            </select>
-          </div>
-
           <!-- Mobile Number Field -->
           <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -107,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive } from 'vue';
 import { IonModal, IonInput, IonIcon, IonSpinner } from '@ionic/vue';
 import { keyOutline } from 'ionicons/icons';
 import api from '@/services/api';
@@ -121,29 +104,14 @@ const emit = defineEmits(['update:isOpen', 'close']);
 const form = reactive({
   username: '',
   employee_name: '',
-  department_id: '',
   mobile_number: '',
 });
 
-const departments = ref<any[]>([]);
 const loading = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
 const ticketNumber = ref('');
 const errors = ref<any>({});
-
-async function fetchDepartments() {
-  try {
-    const response = await api.get('/departments');
-    departments.value = response.data;
-  } catch (error) {
-    console.error('Failed to load departments', error);
-  }
-}
-
-onMounted(() => {
-  fetchDepartments();
-});
 
 function cancel() {
   emit('update:isOpen', false);
@@ -154,7 +122,6 @@ function cancel() {
 function resetForm() {
   form.username = '';
   form.employee_name = '';
-  form.department_id = '';
   form.mobile_number = '';
   errorMessage.value = '';
   successMessage.value = '';
@@ -181,7 +148,11 @@ async function submitRequest() {
   } catch (error: any) {
     if (error.response && error.response.status === 422) {
       errors.value = error.response.data.errors;
-      errorMessage.value = 'Please check your inputs.';
+      if (errors.value.username) {
+        errorMessage.value = errors.value.username[0]; 
+      } else {
+        errorMessage.value = 'Please check your inputs.';
+      }
     } else {
       errorMessage.value = error.response?.data?.message || 'Failed to submit request. Please try again.';
     }
@@ -206,12 +177,5 @@ ion-input {
   --padding-end: 0;
 }
 
-/* Ensure select looks good on mobile */
-select {
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
-    background-position: right 0.5rem center;
-    background-repeat: no-repeat;
-    background-size: 1.5em 1.5em;
-}
+
 </style>

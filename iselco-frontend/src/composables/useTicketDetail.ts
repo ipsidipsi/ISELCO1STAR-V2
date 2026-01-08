@@ -287,7 +287,7 @@ export function useTicketDetail(ticketId: number) {
             close()
             await showSuccess(
                 'Password Reset Successful',
-                'The user\'s password has been reset to "1234". The ticket is now resolved.'
+                'The user\'s password has been reset to "1234". The ticket is now closed.'
             )
             await loadTicket()
         } catch (error: any) {
