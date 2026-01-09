@@ -189,6 +189,14 @@ class AuthController extends Controller
              }
         }
 
+        // Check if user has a pending forced password change (meaning they were already reset)
+        if ($user->must_change_password) {
+            return response()->json([
+                'message' => 'Your password has already been reset to the default. Please login using "1234" and change your password.',
+                'error_code' => 'PASSWORD_RESET_PENDING'
+            ], 400); 
+        }
+
         // Check for spam: Prevent multiple open password reset requests
         $pendingTicket = \App\Models\Ticket::where('requestor_id', $user->id)
             ->whereHas('category', function($q) {

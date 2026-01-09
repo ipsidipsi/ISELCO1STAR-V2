@@ -238,6 +238,13 @@ export const useNotificationStore = defineStore('notifications', () => {
             created_at: new Date().toISOString()
         }
 
+        // Deduplicate: Check if notification with this ID already exists
+        const exists = notifications.value.some(n => n.id === newNotif.id)
+        if (exists) {
+            console.log('[Notifications] Duplicate notification ignored:', newNotif.id)
+            return
+        }
+
         // Add to list
         notifications.value.unshift(newNotif)
         unreadCount.value++

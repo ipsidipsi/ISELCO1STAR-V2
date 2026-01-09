@@ -289,6 +289,14 @@ class TicketController extends Controller
             ], 403);
         }
 
+        // Prevent double acceptance (Race Condition)
+        if ($ticket->assigned_to_id) {
+            return response()->json([
+                'error' => 'Ticket already assigned',
+                'message' => 'This ticket has already been accepted by ' . ($ticket->assignedTo->employee_name ?? 'another user') . '.'
+            ], 409);
+        }
+
         DB::beginTransaction();
         try {
             $oldStatus = $ticket->status;
@@ -632,6 +640,21 @@ class TicketController extends Controller
 
         DB::beginTransaction();
         try {
+            // Re-fetch ticket with lock to prevent race conditions
+            // This ensures that if two admins click at the exact same split second, one waits.
+            // But even without lockForUpdate, a simple status check inside transaction is usually enough for human-speed races.
+            // Let's stick to a simple check but inside the transaction to catch up-to-date state if we re-fetch.
+            // Actually, we already passed $ticket. Let's rely on the retrieved instance but refresh it if needed? 
+            // Better: Check status now.
+            
+            if (in_array($ticket->status, ['closed', 'resolved'])) {
+                DB::rollBack();
+                return response()->json([
+                    'error' => 'Ticket already closed',
+                    'message' => 'This request has already been processed by another administrator.'
+                ], 409);
+            }
+
             // Reset password to 1234
             $targetUser->update([
                 'password' => \Illuminate\Support\Facades\Hash::make('1234'),

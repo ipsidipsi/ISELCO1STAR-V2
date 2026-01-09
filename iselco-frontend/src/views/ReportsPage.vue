@@ -315,7 +315,8 @@ onMounted(async () => {
 
 async function loadDepartments() {
     try {
-        const res = await api.get('/departments')
+        // Request tailored list for reporting access (respecting assigned depts)
+        const res = await api.get('/departments?scope=assigned')
         departments.value = res.data
     } catch (e) { console.error(e) }
 }

@@ -141,7 +141,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('admin/categories', App\Http\Controllers\Api\CategoryController::class);
         
         // Department Management (Admin)
-    Route::apiResource('departments', \App\Http\Controllers\Api\DepartmentController::class);
+    Route::apiResource('admin/departments', \App\Http\Controllers\Api\DepartmentController::class);
 
     // Reports Module
     Route::get('/reports', [\App\Http\Controllers\Api\ReportController::class, 'index']);

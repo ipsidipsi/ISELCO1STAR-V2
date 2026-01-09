@@ -21,13 +21,38 @@ class MetadataController extends Controller
      * GET /api/departments
      * Returns: List of departments synced from external API
      */
-    public function departments()
+    public function departments(Request $request)
     {
-        $departments = Department::where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $query = Department::where('is_active', true)
+            ->orderBy('name');
 
-        return response()->json($departments);
+        // Filter by assigned departments if scoped
+        if ($request->query('scope') === 'assigned') {
+            $user = $request->user();
+            
+            // Superadmins can see all
+            if (!$user->hasRole('superadmin') && !$user->hasRole('admin')) {
+                // Get IDs from activeDepartments relation
+                $deptIds = $user->activeDepartments->pluck('id');
+                
+                // If checking for reports, fallback to primary department if no active depts linked (edge case)
+                if ($deptIds->isEmpty() && $user->department_id) {
+                    $deptIds->push($user->department_id);
+                }
+
+                if ($deptIds->isNotEmpty()) {
+                    $query->whereIn('id', $deptIds);
+                } else {
+                    // Start of fallback logic if totally empty
+                    // $query->where('id', 0); // Force empty? 
+                    // Or do nothing and show all? 
+                    // Better to show nothing for security if scoped.
+                     $query->where('id', -1);
+                }
+            }
+        }
+
+        return response()->json($query->get());
     }
 
     /**

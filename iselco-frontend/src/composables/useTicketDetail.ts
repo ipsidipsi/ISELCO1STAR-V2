@@ -119,7 +119,15 @@ export function useTicketDetail(ticketId: number) {
             await loadTicket() // Reload to get updated status
         } catch (error: any) {
             close()
-            await showError('Failed to Accept Ticket', error.response?.data?.message || 'Could not accept ticket')
+            if (error.response?.status === 409) {
+                await showError(
+                    'Ticket Already Assigned',
+                    error.response.data.message || 'This ticket has already been accepted by another user.'
+                )
+                await loadTicket() // Refresh
+            } else {
+                await showError('Failed to Accept Ticket', error.response?.data?.message || 'Could not accept ticket')
+            }
         }
     }
 
@@ -292,7 +300,15 @@ export function useTicketDetail(ticketId: number) {
             await loadTicket()
         } catch (error: any) {
             close()
-            await showError('Failed to Reset Password', error.response?.data?.message || 'Could not reset password')
+            if (error.response?.status === 409) {
+                await showError(
+                    'Request Already Processed',
+                    error.response.data.message || 'This ticket has already been closed by another administrator.'
+                )
+                await loadTicket() // Refresh data
+            } else {
+                await showError('Failed to Reset Password', error.response?.data?.message || 'Could not reset password')
+            }
         }
     }
 

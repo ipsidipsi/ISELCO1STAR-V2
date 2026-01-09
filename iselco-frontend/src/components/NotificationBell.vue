@@ -167,10 +167,11 @@ async function loadMore() {
 }
 
 function handleNotificationClick(notif: any) {
-  // Mark as read
-  if (!notif.read_at) {
-    notifStore.markAsRead(notif.id)
-  }
+  // Mark as read - REMOVED to prevent race condition/connection refused
+  // The TicketDetailPage handles marking notifications as read via useTicketDetail -> markTicketAsRead
+  // if (!notif.read_at) {
+  //   notifStore.markAsRead(notif.id)
+  // }
   
   // Navigate
   // Close popover logic implicitly stored in UI state or framework
