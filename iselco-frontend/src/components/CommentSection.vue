@@ -35,7 +35,7 @@
       <!-- Scroll to Bottom Button -->
       <button
         v-if="showScrollButton"
-        @click="scrollToBottom"
+        @click="() => scrollToBottom()"
         class="scroll-to-bottom"
         title="Scroll to bottom"
       >

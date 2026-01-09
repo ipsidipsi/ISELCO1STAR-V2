@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
 import router from '@/router'
+import { Capacitor } from '@capacitor/core'
 
 export interface User {
     id: number
@@ -33,16 +34,13 @@ export const useAuthStore = defineStore('auth', () => {
             token.value = response.data.token
 
             // Merge all active roles if provided
-            if (response.data.all_roles) {
+            if (response.data.all_roles && user.value) {
                 user.value.roles = response.data.all_roles
             }
 
-            // Check if must change password
-            if (response.data.must_change_password) {
-                await router.push('/change-password')
-            } else {
-                await router.push('/dashboard')
-            }
+            // Navigation to Dashboard or Change Password is now handled by Router Guards
+            // We just force a clean reload at root to ensure asset paths works correctly on Android
+            window.location.replace('/')
 
             return response.data
         } catch (error: any) {
@@ -65,12 +63,19 @@ export const useAuthStore = defineStore('auth', () => {
             user.value = null
             token.value = null
 
-            // 3. Force Clear Storage (Nuclear option)
+            // 3. Clear Storage
+            // Just clear specific keys to avoid nuking other app settings if any
             localStorage.removeItem('auth')
-            localStorage.clear() // Clear everything to be safe during this debug phase
+            // localStorage.clear() // Removed nuclear option to be safer
 
-            // 4. Redirect
-            await router.push('/login')
+            // 4. Redirect based on platform
+            if (Capacitor.isNativePlatform()) {
+                // Android: Replace route to clear history
+                await router.replace('/login')
+            } else {
+                // Web: Force full reload to ensure memory is clean
+                window.location.replace('/login')
+            }
         }
     }
 
@@ -80,7 +85,7 @@ export const useAuthStore = defineStore('auth', () => {
             user.value = response.data.user
 
             // Merge all active roles (permanent + temporary) into user.roles
-            if (response.data.all_roles) {
+            if (response.data.all_roles && user.value) {
                 user.value.roles = response.data.all_roles
             }
 
@@ -127,6 +132,6 @@ export const useAuthStore = defineStore('auth', () => {
 }, {
     persist: {
         storage: localStorage,
-        paths: ['token', 'user'],
+        pick: ['token', 'user'],
     },
 })

@@ -1,0 +1,95 @@
+# Android Setup & Run Guide
+
+This guide will help you run the ISELCO1 Star V2 app on an Android device or Emulator.
+
+## Prerequisites
+- **Android Studio** installed and set up.
+- **Java (JDK)** installed.
+- **USB Cable** (if using a real phone).
+
+---
+
+## Step 1: Initialize Android Platform
+Since the `android` folder is missing, you need to add it first.
+
+1.  Open your terminal in `iselco-frontend`.
+2.  Run the build command to generate the `dist` folder:
+    ```powershell
+    npm run build
+    ```
+3.  Add the Android platform:
+    ```powershell
+    npx cap add android
+    ```
+
+---
+
+## Step 2: Configure Network (Critical)
+Android devices/emulators cannot reach `localhost`. You must use your computer's **LAN IP Address**.
+
+1.  **Find your IP Address**:
+    *   Open Terminal (PowerShell/CMD).
+    *   Run: `ipconfig`
+    *   Look for **IPv4 Address** (e.g., `192.168.1.5` or `10.0.x.x`).
+
+2.  **Update Backend**:
+    *   If using **XAMPP**: Ensure Apache is running. Your API URL will be:
+        `http://YOUR_IP_ADDRESS/iselco-backend/public/api`
+    *   If using **php artisan serve**: You must expose the host. Run:
+        ```powershell
+        php artisan serve --host=0.0.0.0 --port=8000
+        ```
+        Your API URL will be: `http://YOUR_IP_ADDRESS:8000/api`
+
+3.  **Update Frontend (.env)**:
+    *   Open [iselco-frontend/.env](file:///e:/NEW%20PROJECTS/ISELCO1STAR%20V2/iselco-frontend/.env).
+    *   Change `VITE_API_URL` to the IP-based URL from above.
+    *   Example:
+        ```env
+        VITE_API_URL=http://192.168.1.5:8000/api
+        ```
+
+
+---
+
+## Step 2.5: Run Backend Services (3 Terminals)
+You need **3 separate terminals** running for the full system:
+
+1.  **Backend API**:
+    ```powershell
+    php artisan serve --host=0.0.0.0 --port=8000
+    ```
+2.  **Reverb (Real-time)**:
+    ```powershell
+    php artisan reverb:start --host=0.0.0.0 --port=8080
+    ```
+3.  **Queue Worker**:
+    *(Does not need host/port configs, just runs locally)*
+    ```powershell
+    php artisan queue:work
+    ```
+
+---
+
+## Step 3: Build & Sync
+Every time you change code or [.env](file:///e:/NEW%20PROJECTS/ISELCO1STAR%20V2/iselco-frontend/.env), you must rebuild and sync.
+
+```powershell
+npm run build
+npx cap sync
+```
+
+---
+
+## Step 4: Run on Android
+1.  Open the project in Android Studio:
+    ```powershell
+    npx cap open android
+    ```
+2.  Wait for Gradle to sync (bottom status bar).
+3.  **To run on Emulator**: Select a device from the top menu and click the green **Run (Play)** button.
+4.  **To run on Real Device**: Enable **USB Debugging** on your phone, connect via USB, select it in the menu, and click Run.
+
+## Troubleshooting
+- **Network Error**: Double-check your IP address and firewall. Ensure the phone is on the same Wi-Fi.
+- **Cleartext Traffic Error**: If `http://` fails (not recommended for prod but ok for dev), ensure `android/app/src/main/AndroidManifest.xml` has `android:usesCleartextTraffic="true"` in the `<application>` tag. (Capacitor usually sets this default for dev).

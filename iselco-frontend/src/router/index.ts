@@ -67,6 +67,15 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
 
+  // 1. Force Password Change Guard
+  // If user is logged in AND must change password, restrict navigation to only the Change Password page
+  if (authStore.isAuthenticated && authStore.user?.must_change_password) {
+    if (to.name !== 'ChangePassword' && to.name !== 'Login') {
+      next({ name: 'ChangePassword' })
+      return
+    }
+  }
+
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login')
   } else if (to.meta.requiresGuest && authStore.isAuthenticated) {

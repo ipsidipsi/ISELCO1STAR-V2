@@ -318,7 +318,6 @@ const newUser = ref({
   employee_name: '',
   mobile_number: '',
   department_id: null,
-  department_id: null,
   password: '', // Kept for type safety if needed, but unused in UI
   confirm_password: '', // Kept for type safety if needed, but unused in UI
 });
@@ -490,7 +489,7 @@ const openUserMenu = async (user: any, event: Event) => {
   const hasTempRoles = (user.temporaryRoles || user.temporary_roles || []).length > 0;
   
   // Build buttons array conditionally
-  const buttons = [
+  const buttons: any[] = [
     {
       text: 'Edit',
       icon: 'create-outline',
@@ -537,7 +536,7 @@ const openUserMenu = async (user: any, event: Event) => {
     },
     {
       text: 'Cancel',
-      role: 'cancel'
+      role: 'cancel' as const
     }
   );
 

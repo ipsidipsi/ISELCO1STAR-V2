@@ -100,6 +100,6 @@ export const useMetadataStore = defineStore('metadata', () => {
 }, {
     persist: {
         storage: localStorage,
-        paths: ['departments', 'categories', 'priorities'],
+        pick: ['departments', 'categories', 'priorities'],
     },
 })

@@ -24,6 +24,10 @@
 
     <!-- Content with gradient background -->
     <ion-content :fullscreen="true" class="gradient-bg">
+      <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
+
       <div class="p-6 md:p-8 max-w-[1600px] mx-auto">
         
         <!-- Temporary Role Notification Banner -->
@@ -365,6 +369,17 @@ onMounted(async () => {
 onUnmounted(() => {
   notificationStore.stopListener()
 })
+
+async function handleRefresh(event: any) {
+  try {
+    await Promise.all([
+      loadStats(),
+      loadTickets({ limit: 5 })
+    ])
+  } finally {
+    event.target.complete()
+  }
+}
 
 async function handleLogout() {
   await authStore.logout()
