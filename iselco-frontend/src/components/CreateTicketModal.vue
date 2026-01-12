@@ -361,18 +361,12 @@ const selectedPriorityInfo = computed(() => {
   return priorities.value.find(p => p.id === Number(form.value.priority_id))
 })
 
-onMounted(async () => {
-  // Force fetch fresh metadata to ensure latest categories and departments
-  await metadataStore.fetchAllMetadata()
-})
+// onMounted removed to lazy load metadata when modal opens
 
 watch(() => props.isOpen, async (newVal) => {
   if (newVal) {
-    // Force refresh categories and departments when modal opens
-    await Promise.all([
-      metadataStore.fetchCategories(),
-      metadataStore.fetchDepartments()
-    ])
+    // Force refresh metadata when modal opens
+    await metadataStore.fetchAllMetadata()
     resetForm()
   }
 })

@@ -2,6 +2,13 @@ import { createRouter, createWebHistory } from '@ionic/vue-router';
 import { RouteRecordRaw } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import LoginPage from '../views/LoginPage.vue';
+import DashboardPage from '../views/DashboardPage.vue';
+import TicketListPage from '../views/TicketListPage.vue';
+import TicketDetailPage from '../views/TicketDetailPage.vue';
+import ChangePasswordPage from '../views/ChangePasswordPage.vue';
+import CategoryManagementPage from '../views/CategoryManagementPage.vue';
+import ReportsPage from '@/views/ReportsPage.vue';
+import UserManagementPage from '@/views/UserManagementPage.vue';
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -17,43 +24,43 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: () => import('../views/DashboardPage.vue'),
+    component: DashboardPage,
     meta: { requiresAuth: true }
   },
   {
     path: '/tickets',
     name: 'Tickets',
-    component: () => import('../views/TicketListPage.vue'),
+    component: TicketListPage,
     meta: { requiresAuth: true }
   },
   {
     path: '/tickets/:id',
     name: 'TicketDetail',
-    component: () => import('../views/TicketDetailPage.vue'),
+    component: TicketDetailPage,
     meta: { requiresAuth: true }
   },
   {
     path: '/change-password',
     name: 'ChangePassword',
-    component: () => import('../views/ChangePasswordPage.vue'),
+    component: ChangePasswordPage,
     meta: { requiresAuth: true }
   },
   {
     path: '/admin/categories',
     name: 'CategoryManagement',
-    component: () => import('../views/CategoryManagementPage.vue'),
+    component: CategoryManagementPage,
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/admin/reports',
     name: 'Reports',
-    component: () => import('@/views/ReportsPage.vue'),
+    component: ReportsPage,
     meta: { requiresAuth: true, roles: ['superadmin', 'department_admin'] }
   },
   {
     path: '/admin/users',
     name: 'UserManagement',
-    component: () => import('@/views/UserManagementPage.vue'),
+    component: UserManagementPage,
     meta: { requiresAuth: true, requiresAdmin: true }
   }
 ]
