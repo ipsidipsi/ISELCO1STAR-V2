@@ -1,26 +1,29 @@
 <template>
   <ion-page>
     <!-- Header -->
-    <ion-header class="bg-white shadow-sm">
-      <ion-toolbar class="px-4">
+    <ion-header class="bg-white dark:bg-gray-800 shadow-sm">
+      <ion-toolbar class="px-4" color="none">
         <div class="flex items-center justify-between py-2">
           <div class="flex items-center space-x-3">
             <ion-button fill="clear" @click="goBack">
-              <ion-icon :icon="arrowBackOutline" class="text-navy-700"></ion-icon>
+              <ion-icon :icon="arrowBackOutline" class="text-navy-700 dark:text-white"></ion-icon>
             </ion-button>
-            <h1 class="text-xl font-bold text-navy-700">Tickets</h1>
+            <h1 class="text-xl font-bold text-navy-700 dark:text-white">Tickets</h1>
           </div>
           
-          <ion-button fill="solid" color="success" @click="createTicket" class="bg-teal">
-            <ion-icon :icon="addOutline" slot="start"></ion-icon>
-            New Ticket
-          </ion-button>
+          <div class="flex items-center gap-2">
+            <ThemeToggle />
+            <ion-button fill="solid" color="success" @click="createTicket" class="bg-teal">
+              <ion-icon :icon="addOutline" slot="start"></ion-icon>
+              New Ticket
+            </ion-button>
+          </div>
         </div>
       </ion-toolbar>
     </ion-header>
 
     <!-- Content -->
-    <ion-content :fullscreen="true" class="bg-gray-50">
+    <ion-content :fullscreen="true" class="bg-gray-50 dark:bg-gray-900">
       <div class="p-4 max-w-7xl mx-auto">
         
         <!-- Active Filters Banner -->
@@ -57,7 +60,7 @@
             <select 
               v-model="statusFilter"
               @change="handleFilter"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-transparent"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal focus:border-transparent bg-white dark:bg-gray-700 dark:text-white"
             >
               <option value="">All Status</option>
               <option value="new">New</option>
@@ -72,7 +75,7 @@
             <select 
               v-model="sortBy"
               @change="handleFilter"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-transparent"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal focus:border-transparent bg-white dark:bg-gray-700 dark:text-white"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
@@ -92,13 +95,13 @@
             v-for="ticket in tickets"
             :key="ticket.id"
             @click="viewTicket(ticket.id)"
-            class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg hover:border-2 hover:border-teal transition-all cursor-pointer"
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 hover:shadow-lg hover:border-2 hover:border-teal transition-all cursor-pointer border border-transparent dark:border-gray-700"
           >
             <!-- Header -->
             <div class="flex items-start justify-between mb-3">
               <div class="flex-1">
                 <div class="flex items-center flex-wrap gap-2 mb-3">
-                  <span class="text-base font-mono font-bold text-navy-700">
+                  <span class="text-base font-mono font-bold text-navy-700 dark:text-teal-400">
                     {{ ticket.ticket_number }}
                   </span>
                   <span 
@@ -116,10 +119,10 @@
                     {{ ticket.priority.name }}
                   </span>
                 </div>
-                <h3 class="text-xl font-bold text-navy-700 mb-2 leading-snug">
+                <h3 class="text-xl font-bold text-navy-700 dark:text-gray-100 mb-2 leading-snug">
                   {{ ticket.title }}
                 </h3>
-                <p class="text-base text-gray-700 leading-relaxed line-clamp-2">
+                <p class="text-base text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-2">
                   {{ ticket.description }}
                 </p>
               </div>
@@ -127,7 +130,7 @@
             </div>
 
             <!-- Footer -->
-            <div class="flex items-center justify-between text-sm text-gray-600 mt-4 pt-4 border-t border-gray-200">
+            <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <div class="flex items-center gap-4">
                 <span class="font-medium">
                   <ion-icon :icon="personOutline" class="align-middle text-base"></ion-icon>
@@ -165,6 +168,7 @@ import {
   IonPage, IonHeader, IonToolbar, IonContent, IonButton,
   IonIcon, IonSpinner, IonSearchbar
 } from '@ionic/vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import {
   arrowBackOutline, addOutline, chevronForwardOutline,
   personOutline, businessOutline, documentTextOutline,
@@ -302,3 +306,22 @@ function formatDate(date: string) {
   })
 }
 </script>
+
+<style scoped>
+/* Ensure ion-content background override works */
+ion-toolbar {
+  --background: transparent;
+}
+
+:global(.dark) ion-content {
+  --background: #111827; /* gray-900 */
+}
+
+/* Searchbar Dark Mode */
+:global(.dark) ion-searchbar {
+  --background: #374151; /* gray-700 */
+  --color: white;
+  --placeholder-color: #9ca3af;
+  --icon-color: #9ca3af;
+}
+</style>

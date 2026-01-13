@@ -1,6 +1,8 @@
 <template>
   <ion-page>
-    <ion-content  :fullscreen="true" class="bg-gray-50">
+    <ion-content  :fullscreen="true" class="bg-gray-50 dark:bg-gray-900">
+
+
       <div class="flex items-center justify-center min-h-screen px-4">
         <div class="w-full max-w-md">
           <!-- Logo/Header -->
@@ -8,25 +10,28 @@
             <div class="w-20 h-20 mx-auto mb-4 bg-teal rounded-full flex items-center justify-center">
               <ion-icon :icon="ticketOutline" class="text-4xl text-white"></ion-icon>
             </div>
-            <h1 class="text-3xl font-bold text-navy-700">ISELCO-I STAR</h1>
-            <p class="text-gray-600 mt-2">Ticketing System</p>
+            <h1 class="text-3xl font-bold text-navy-700 dark:text-white">ISELCO-I STAR</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-2">Ticketing System</p>
           </div>
 
           <!-- Login Card -->
-          <div class="bg-white rounded-2xl shadow-lg p-8">
-            <h2 class="text-2xl font-semibold text-navy-700 mb-6">Sign In</h2>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-2xl font-semibold text-navy-700 dark:text-white">Sign In</h2>
+              <ThemeToggle />
+            </div>
 
             <form @submit.prevent="handleLogin">
               <!-- Login Field -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Username or Mobile Number
                 </label>
                 <ion-input
                   v-model="loginValue"
                   type="text"
                   placeholder="Enter username or mobile number"
-                  class="border border-gray-300 rounded-lg px-4 py-3 w-full focus:ring-2 focus:ring-teal focus:border-transparent"
+                  class="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 w-full focus:ring-2 focus:ring-teal focus:border-transparent bg-white dark:text-white dark:bg-gray-700"
                   :class="{ 'border-red-500': errors.login }"
                 ></ion-input>
                 <p v-if="errors.login" class="text-red-500 text-sm mt-1">{{ errors.login }}</p>
@@ -34,14 +39,14 @@
 
               <!-- Password Field -->
               <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Password
                 </label>
                 <ion-input
                   v-model="password"
                   :type="showPassword ? 'text' : 'password'"
                   placeholder="Enter your password"
-                  class="border border-gray-300 rounded-lg px-4 py-3 w-full focus:ring-2 focus:ring-teal focus:border-transparent"
+                  class="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 w-full focus:ring-2 focus:ring-teal focus:border-transparent bg-white dark:text-white dark:bg-gray-700"
                   :class="{ 'border-red-500': errors.password }"
                 ></ion-input>
                 <p v-if="errors.password" class="text-red-500 text-sm mt-1">{{ errors.password }}</p>
@@ -55,7 +60,7 @@
                   v-model="showPassword"
                   class="w-4 h-4 text-teal border-gray-300 rounded focus:ring-teal"
                 />
-                <label for="showPassword" class="ml-2 text-sm text-gray-700">
+                <label for="showPassword" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
                   Show password
                 </label>
               </div>
@@ -88,7 +93,7 @@
           </div>
 
           <!-- Footer -->
-          <div class="text-center mt-6 text-sm text-gray-600">
+          <div class="text-center mt-6 text-sm text-gray-600 dark:text-gray-400">
             © 2025 ISELCO-I. All rights reserved.
           </div>
         </div>
@@ -107,6 +112,7 @@ import { IonPage, IonContent, IonInput, IonIcon, IonSpinner } from '@ionic/vue'
 import { ticketOutline } from 'ionicons/icons'
 import { useAuth } from '@/composables/useAuth'
 import ForgotPasswordModal from '@/components/auth/ForgotPasswordModal.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 
 // Composable for auth logic
 const { login, loading, errorMessage, errors } = useAuth()
@@ -129,8 +135,13 @@ function openForgotPassword() {
 <style scoped>
 /* Custom input styling to match Tailwind */
 ion-input {
-  --background: white;
+  --background: transparent;
   --padding-start: 0;
   --padding-end: 0;
+}
+
+:global(.dark) ion-input {
+  --color: white;
+  --placeholder-color: #9ca3af; /* gray-400 */
 }
 </style>

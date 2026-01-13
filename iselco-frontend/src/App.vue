@@ -7,13 +7,18 @@
 
 <script setup lang="ts">
 import { IonApp, IonRouterOutlet } from '@ionic/vue';
-import NotificationContainer from '@/components/NotificationContainer.vue';
 import { useNotificationStore } from '@/stores/notifications';
 import { useAuthStore } from '@/stores/auth';
-import { watch, onUnmounted } from 'vue';
+import { useThemeStore } from '@/stores/theme';
+import { watch, onUnmounted, onMounted } from 'vue';
 
 const notificationStore = useNotificationStore();
 const authStore = useAuthStore();
+const themeStore = useThemeStore();
+
+onMounted(() => {
+  themeStore.initTheme();
+});
 
 // Initialize notification listener when user is authenticated
 watch(() => authStore.user, (user) => {

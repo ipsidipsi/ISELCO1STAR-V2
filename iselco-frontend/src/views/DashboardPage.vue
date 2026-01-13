@@ -4,16 +4,17 @@
     <ion-header class="glass-header">
       <ion-toolbar class="dashboard-header">
           <div class="flex items-center justify-between px-4 py-2">
-            <div class="flex items-center gap-3">
-              <ion-icon :icon="ticketOutline" class="text-2xl text-teal-600"></ion-icon>
+              <div class="flex items-center gap-3">
+              <ion-icon :icon="ticketOutline" class="text-2xl text-teal-600 dark:text-teal-400"></ion-icon>
               <div>
-                <h1 class="text-xl font-bold text-navy-700">Dashboard</h1>
-                <p class="text-sm text-gray-600">Welcome, {{authStore.user?.employee_name || authStore.user?.username}}</p>
+                <h1 class="text-xl font-bold text-navy-700 dark:text-gray-100">Dashboard</h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Welcome, {{authStore.user?.employee_name || authStore.user?.username}}</p>
               </div>
             </div>
           
-          <div class="flex items-center">
-            <NotificationBell class="mr-2" />
+          <div class="flex items-center gap-2">
+            <ThemeToggle />
+            <NotificationBell />
             <ion-button fill="clear" @click="handleLogout" class="glass-button">
               <ion-icon :icon="logOutOutline" class="text-gray-700"></ion-icon>
             </ion-button>
@@ -23,7 +24,7 @@
     </ion-header>
 
     <!-- Content with gradient background -->
-    <ion-content :fullscreen="true" class="gradient-bg">
+    <ion-content :fullscreen="true" class="gradient-bg dark:bg-gray-900">
       <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
@@ -263,6 +264,7 @@ import CreateTicketModal from '@/components/CreateTicketModal.vue'
 
 // Import Notification Bell
 import NotificationBell from '@/components/NotificationBell.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import { useNotification } from '@/composables/useNotification'
 import { useNotificationStore } from '@/stores/notifications'
 
@@ -496,6 +498,16 @@ function formatDate(date: string) {
   --background: linear-gradient(135deg, #f5f7fa 0%, #e6eef5 100%);
 }
 
+ion-toolbar {
+  --background: transparent !important;
+  background: transparent !important;
+}
+
+:global(.dark) ion-toolbar {
+  --background: transparent !important;
+  background: transparent !important;
+}
+
 /* Glass Header */
 .glass-header {
   --background: rgba(255, 255, 255, 0.8);
@@ -514,6 +526,22 @@ function formatDate(date: string) {
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
   transition: all 0.3s ease;
+}
+
+:global(.dark) .glass-card {
+  background: rgba(30, 41, 59, 0.75); /* Darker background for dark mode */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+:global(.dark) .glass-header {
+  --background: rgba(17, 24, 39, 0.95) !important;
+  background-color: rgba(17, 24, 39, 0.95) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+:global(.dark) .gradient-bg {
+  --background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
 }
 
 .glass-card:hover {

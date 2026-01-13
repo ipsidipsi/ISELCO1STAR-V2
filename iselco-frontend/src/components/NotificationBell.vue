@@ -36,7 +36,7 @@
               <ion-icon :icon="preferences.is_muted ? volumeMuteOutline : volumeHighOutline"></ion-icon>
             </button>
             <button 
-              v-if="unreadCount > 0"
+              v-if="hasUnread"
               @click="markAllRead"
               class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 font-medium"
             >
@@ -128,6 +128,10 @@ const notifStore = useNotificationStore()
 const { notifications, unreadCount, loading, hasMore, preferences } = storeToRefs(notifStore)
 const { showConfirm, showSuccess } = useCustomNotification()
 
+const hasUnread = computed(() => {
+  return unreadCount.value > 0 || notifications.value.some(n => !n.read_at)
+})
+
 onMounted(() => {
   notifStore.fetchNotifications(true)
   notifStore.fetchUnreadCount()
@@ -143,16 +147,8 @@ async function markAllRead() {
 }
 
 async function confirmDeleteAll() {
-  const result = await showConfirm(
-    'Delete All Notifications?',
-    'This action cannot be undone',
-    'Delete All',
-    'Cancel'
-  )
-  
-  if (result.isConfirmed) {
+  if (confirm('Are you sure you want to delete all notifications? This cannot be undone.')) {
     await notifStore.deleteAllNotifications()
-    await showSuccess('Deleted!', 'All notifications have been removed')
   }
 }
 
