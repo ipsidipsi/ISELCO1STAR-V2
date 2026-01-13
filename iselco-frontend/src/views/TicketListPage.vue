@@ -12,7 +12,7 @@
           </div>
           
           <div class="flex items-center gap-2">
-            <ThemeToggle />
+            
             <ion-button fill="solid" color="success" @click="createTicket" class="bg-teal">
               <ion-icon :icon="addOutline" slot="start"></ion-icon>
               New Ticket
@@ -168,7 +168,7 @@ import {
   IonPage, IonHeader, IonToolbar, IonContent, IonButton,
   IonIcon, IonSpinner, IonSearchbar
 } from '@ionic/vue'
-import ThemeToggle from '@/components/ThemeToggle.vue'
+
 import {
   arrowBackOutline, addOutline, chevronForwardOutline,
   personOutline, businessOutline, documentTextOutline,

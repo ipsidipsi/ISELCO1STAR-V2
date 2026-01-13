@@ -13,7 +13,6 @@
             </div>
           
           <div class="flex items-center gap-2">
-            <ThemeToggle />
             <NotificationBell />
             <ion-button fill="clear" @click="handleLogout" class="glass-button">
               <ion-icon :icon="logOutOutline" class="text-gray-700"></ion-icon>
@@ -264,7 +263,6 @@ import CreateTicketModal from '@/components/CreateTicketModal.vue'
 
 // Import Notification Bell
 import NotificationBell from '@/components/NotificationBell.vue'
-import ThemeToggle from '@/components/ThemeToggle.vue'
 import { useNotification } from '@/composables/useNotification'
 import { useNotificationStore } from '@/stores/notifications'
 

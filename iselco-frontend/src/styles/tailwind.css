@@ -6,11 +6,11 @@
 :root {
   --ion-background-color: #F7FAFC;
   --ion-text-color: #2D3748;
-  
+
   /* Sidebar colors */
   --sidebar-bg: #2D3748;
   --sidebar-active: #3B82F6;
-  
+
   /* Status colors */
   --status-new: #6B7280;
   --status-in-progress: #F59E0B;
@@ -20,7 +20,7 @@
 
 /* Dark mode */
 body.dark {
-  --ion-background-color: #1A202C;
+  --ion-background-color: #0f172a;
   --ion-text-color: #F7FAFC;
 }
 
