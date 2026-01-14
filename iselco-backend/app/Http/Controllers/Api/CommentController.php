@@ -64,7 +64,7 @@ class CommentController extends Controller
         }
 
         // Broadcast the new comment to other users viewing this ticket
-        broadcast(new \App\Events\CommentCreated($comment, $ticketId))->toOthers();
+        broadcast(new \App\Events\CommentCreated($comment, $ticketId));
 
         return response()->json($comment, 201);
     }
@@ -113,7 +113,7 @@ class CommentController extends Controller
         $comment->load(['user', 'attachments']);
 
         // Broadcast the update to other users
-        broadcast(new \App\Events\CommentUpdated($comment, $comment->ticket_id))->toOthers();
+        broadcast(new \App\Events\CommentUpdated($comment, $comment->ticket_id));
 
         return response()->json($comment);
     }
@@ -138,7 +138,7 @@ class CommentController extends Controller
         $comment->delete();
 
         // Broadcast the deletion to other users
-        broadcast(new \App\Events\CommentDeleted($commentId, $ticketId))->toOthers();
+        broadcast(new \App\Events\CommentDeleted($commentId, $ticketId));
 
         return response()->json(['message' => 'Comment deleted successfully']);
     }
