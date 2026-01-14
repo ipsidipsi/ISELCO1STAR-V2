@@ -221,6 +221,23 @@ class User extends Authenticatable
         return $this->hasOne(NotificationPreference::class);
     }
 
+    /**
+     * Announcements targeted specifically to this user.
+     */
+    public function announcements()
+    {
+        return $this->belongsToMany(Announcement::class, 'announcement_users');
+    }
+
+    /**
+     * Announcements this user has marked as read.
+     */
+    public function readAnnouncements()
+    {
+        return $this->belongsToMany(Announcement::class, 'announcement_reads')
+            ->withPivot('read_at');
+    }
+
     // ==================== RBAC METHODS ====================
 
     /**

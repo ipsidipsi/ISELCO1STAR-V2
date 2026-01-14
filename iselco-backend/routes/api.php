@@ -143,6 +143,12 @@ Route::middleware('auth:sanctum')->group(function () {
         // Department Management (Admin)
     Route::apiResource('admin/departments', \App\Http\Controllers\Api\DepartmentController::class);
 
+    // Broadcast / Announcements
+    Route::get('/announcements', [App\Http\Controllers\AnnouncementController::class, 'index']);
+    Route::get('/announcements/history', [App\Http\Controllers\AnnouncementController::class, 'history']);
+    Route::post('/announcements', [App\Http\Controllers\AnnouncementController::class, 'store']);
+    Route::post('/announcements/{id}/read', [App\Http\Controllers\AnnouncementController::class, 'markAsRead']);
+
     // Reports Module
     Route::get('/reports', [\App\Http\Controllers\Api\ReportController::class, 'index']);
     Route::get('/reports/analytics', [\App\Http\Controllers\Api\ReportController::class, 'analytics']);

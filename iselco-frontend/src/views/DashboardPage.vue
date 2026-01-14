@@ -12,7 +12,8 @@
               </div>
             </div>
           
-          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2">
+            <AnnouncementIcon />
             <NotificationBell />
             <ion-button fill="clear" @click="handleLogout" class="glass-button">
               <ion-icon :icon="logOutOutline" class="text-gray-700"></ion-icon>
@@ -30,6 +31,9 @@
 
       <div class="p-6 md:p-8 max-w-[1600px] mx-auto">
         
+        <!-- Broadcast Announcements -->
+        <AnnouncementDisplay />
+
         <!-- Temporary Role Notification Banner -->
         <div v-if="hasTemporaryRoles" class="temp-role-notification mb-6">
             <div class="flex items-center p-4">
@@ -161,6 +165,12 @@
                 <span class="text-sm font-medium">View All</span>
               </button>
               
+              <!-- Broadcast Message - Permission based -->
+              <button v-if="canBroadcast" @click="openBroadcastModal" class="action-button action-orange">
+                <ion-icon :icon="megaphoneOutline" class="text-3xl mb-2"></ion-icon>
+                <span class="text-sm font-medium">Broadcast</span>
+              </button>
+
               <!-- Users Management - Only for admins -->
               <button v-if="isAdmin" @click="goToUsers" class="action-button action-purple">
                 <ion-icon :icon="peopleOutline" class="text-3xl mb-2"></ion-icon>
@@ -238,6 +248,13 @@
       @close="showCreateModal = false"
       @created="handleTicketCreated"
     />
+
+    <!-- Broadcast Modal -->
+    <BroadcastModal
+      :is-open="showBroadcastModal"
+      @close="showBroadcastModal = false"
+      @created="handleBroadcastCreated"
+    />
   </ion-page>
 </template>
 
@@ -255,7 +272,8 @@ import {
   timeOutline, checkmarkCircleOutline, addCircleOutline, listOutline,
   statsChartOutline, settingsOutline, chevronForwardOutline, peopleOutline,
   shieldCheckmarkOutline, createOutline, checkmarkDoneCircleOutline,
-  hourglassOutline, alertCircleOutline, arrowForward, funnelOutline, searchOutline
+  hourglassOutline, alertCircleOutline, arrowForward, funnelOutline, searchOutline,
+  megaphoneOutline
 } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 import { useTickets } from '@/composables/useTickets'
@@ -265,6 +283,11 @@ import CreateTicketModal from '@/components/CreateTicketModal.vue'
 import NotificationBell from '@/components/NotificationBell.vue'
 import { useNotification } from '@/composables/useNotification'
 import { useNotificationStore } from '@/stores/notifications'
+
+// Import Broadcast Components
+import AnnouncementDisplay from '@/components/announcements/AnnouncementDisplay.vue'
+import AnnouncementIcon from '@/components/announcements/AnnouncementIcon.vue'
+import BroadcastModal from '@/components/announcements/BroadcastModal.vue'
 
 const router = useRouter()
 
@@ -430,6 +453,41 @@ function navigateToTickets(filterType: string) {
   }
   
   router.push({ path: '/tickets', query })
+}
+
+// Broadcast Logic
+const showBroadcastModal = ref(false)
+
+const canBroadcast = computed(() => {
+  const user = authStore.user
+  if (!user) return false
+  
+  // Superadmin or has specific permission
+  return user.roles?.some((r: any) => r.slug === 'superadmin') || 
+         user.permissions?.some((p: any) => p === 'broadcast.universal' || p === 'broadcast.create')
+})
+
+function openBroadcastModal() {
+  showBroadcastModal.value = true
+}
+
+async function handleBroadcastCreated() {
+   // Refresh announcements
+   const store = useNotificationStore() // actually useAnnouncementStore
+   // But easier to just trigger dashboard refresh
+   await Promise.all([
+      loadStats(),
+      loadTickets({ limit: 5 })
+   ])
+   // Also refresh active announcements
+   // We need to import store locally if not global, or use specific component refresh
+   // Actually AnnouncementDisplay handles its own fetch on mount, and listen to events?
+   // We might need to force refresh AnnouncementDisplay.
+   // Or better: Use the event bus or ref.
+   // For now, let's just let the simple store refresh happen if we had it.
+   // But AnnouncementDisplay uses AnnouncementStore.
+   const annStore = (await import('@/stores/announcements')).useAnnouncementStore()
+   await annStore.fetchActive()
 }
 
 function goToUsers() {

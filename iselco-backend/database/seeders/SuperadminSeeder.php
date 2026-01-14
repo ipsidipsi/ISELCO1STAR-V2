@@ -27,13 +27,13 @@ class SuperadminSeeder extends Seeder
         // Create superadmin user
         $superadmin = User::create([
             'username' => 'admin',
-            'password' => Hash::make('admin123'), // Default password
+            'password' => Hash::make('admin'), // Default password
             'employee_name' => 'System Administrator',
             'mobile_number' => null, // Can be set later
             'empbadge_number' => 'ADMIN001',
             'department_id' => null, // Not tied to specific department
             'is_active' => true,
-            'must_change_password' => true, // Force password change on first login
+            'must_change_password' => false, // No need to change immediately for dev
         ]);
 
         // Assign Superadmin role
@@ -42,7 +42,7 @@ class SuperadminSeeder extends Seeder
 
         $this->command->info('✅ Created superadmin account');
         $this->command->info('   Username: admin');
-        $this->command->info('   Password: admin123');
-        $this->command->warn('⚠️  Please change the password after first login!');
+        $this->command->info('   Password: admin');
+        $this->command->warn('⚠️  Dev mode: Password is simply "admin"');
     }
 }
