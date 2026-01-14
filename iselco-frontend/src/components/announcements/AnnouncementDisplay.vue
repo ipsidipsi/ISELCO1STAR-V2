@@ -34,36 +34,71 @@
         <p class="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap mb-4">{{ announcement.content }}</p>
 
         <!-- Media/Attachment -->
-        <div v-if="announcement.image_url" class="mb-3">
-            <!-- Image (Facebook Style: Large, Full Width) -->
-            <div 
-                v-if="isImage(announcement.image_url)" 
-                class="w-full rounded-lg overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer"
-                @click="viewImage(announcement.image_url)"
-            >
-                <img 
-                    :src="getFullUrl(announcement.image_url)" 
-                    class="w-full h-auto max-h-96 object-contain hover:opacity-95 transition-opacity" 
+        <div class="mb-3">
+            <!-- 1. IMAGES GRID -->
+            <div v-if="getImages(announcement).length > 0" class="grid gap-1 mb-3" 
+                 :class="{
+                    'grid-cols-1': getImages(announcement).length === 1,
+                    'grid-cols-2': getImages(announcement).length > 1
+                 }">
+                <div 
+                    v-for="(img, idx) in getImages(announcement)" 
+                    :key="idx"
+                    class="relative overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer text-center"
+                    :class="{
+                        'rounded-lg': getImages(announcement).length === 1,
+                        'rounded-tl-lg': idx === 0 && getImages(announcement).length > 1,
+                        'rounded-tr-lg': idx === 1 && getImages(announcement).length > 1,
+                        'rounded-bl-lg': idx === 2 && getImages(announcement).length > 2, // specific logic for corners could be complex, simple rounded-md on items is safer
+                        'col-span-2': getImages(announcement).length === 3 && idx === 0, // In 3 items, first is full width
+                        'max-h-96': getImages(announcement).length === 1,
+                        'h-48': getImages(announcement).length > 1
+                    }"
+                    style="border-radius: 8px;"
+                    @click="viewImage(getFullUrl(img.file_url || img))"
                 >
+                    <img 
+                        :src="getFullUrl(img.file_url || img)" 
+                        class="w-full h-full object-cover hover:opacity-95 transition-opacity" 
+                    >
+                </div>
             </div>
-            
-            <!-- Document/File (Attachment Style) -->
-            <a 
-                v-else 
-                :href="getFullUrl(announcement.image_url)" 
-                target="_blank"
-                class="flex items-center p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors group"
-                download
-            >
-                <div class="w-10 h-10 flex items-center justify-center bg-blue-100 text-blue-600 rounded-lg mr-3 group-hover:bg-blue-200">
-                    <ion-icon :icon="documentAttachOutline" class="text-xl"></ion-icon>
+
+            <!-- 2. DOCUMENTS / FILES LIST -->
+            <div v-if="getDocuments(announcement).length > 0" class="space-y-2">
+                <a 
+                    v-for="(doc, idx) in getDocuments(announcement)"
+                    :key="idx"
+                    :href="getFullUrl(doc.file_url)" 
+                    target="_blank"
+                    class="flex items-center p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors group"
+                    download
+                    :title="doc.file_name"
+                >
+                    <div class="w-10 h-10 flex items-center justify-center bg-blue-100 text-blue-600 rounded-lg mr-3 group-hover:bg-blue-200">
+                        <ion-icon :icon="documentAttachOutline" class="text-xl"></ion-icon>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                         <p class="text-sm font-medium text-gray-900 dark:text-gray-800 truncate">{{ doc.file_name || 'Attachment' }}</p>
+                         <p class="text-xs text-gray-500 uppercase">{{ doc.file_size ? (doc.file_size / 1024).toFixed(1) + ' KB' : (doc.file_type || 'FILE') }}</p>
+                    </div>
+                    <ion-icon :icon="downloadOutline" class="text-gray-400"></ion-icon>
+                </a>
+            </div>
+
+            <!-- Legacy Fallback: Only show if NO attachments exist but image_url does -->
+            <div v-if="(!announcement.attachments || announcement.attachments.length === 0) && announcement.image_url" class="mb-3">
+                 <div 
+                    v-if="isImage(announcement.image_url)" 
+                    class="w-full rounded-lg overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer"
+                    @click="viewImage(announcement.image_url)"
+                >
+                    <img 
+                        :src="getFullUrl(announcement.image_url)" 
+                        class="w-full h-auto max-h-96 object-contain hover:opacity-95 transition-opacity" 
+                    >
                 </div>
-                <div class="flex-1">
-                     <p class="text-sm font-medium text-gray-900 dark:text-gray-800">Download Attachment</p>
-                     <p class="text-xs text-gray-500 uppercase">{{ getExtension(announcement.image_url) }} FILE</p>
-                </div>
-                <ion-icon :icon="downloadOutline" class="text-gray-400"></ion-icon>
-            </a>
+            </div>
         </div>
 
         <!-- Footer -->
@@ -135,6 +170,23 @@ function isImage(url: string) {
     const cleanUrl = url.split('?')[0];
     const extension = cleanUrl.split('.').pop()?.toLowerCase();
     return ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(extension || '');
+}
+
+function getImages(announcement: any) {
+    if (!announcement.attachments || announcement.attachments.length === 0) return [];
+    return announcement.attachments.filter((att: any) => {
+        // Check mime type if available, otherwise check file name
+        if (att.file_type) return att.file_type.startsWith('image/');
+        return isImage(att.file_path);
+    });
+}
+
+function getDocuments(announcement: any) {
+    if (!announcement.attachments || announcement.attachments.length === 0) return [];
+    return announcement.attachments.filter((att: any) => {
+        if (att.file_type) return !att.file_type.startsWith('image/');
+        return !isImage(att.file_path);
+    });
 }
 
 function getExtension(url: string) {

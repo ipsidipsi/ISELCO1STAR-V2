@@ -48,10 +48,10 @@
              </div>
         </div>
 
-        <!-- Image Upload -->
+        <!-- Attachments Upload -->
         <div class="px-4 mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Attach File (Image, PDF, Doc)</label>
-            <input type="file" @change="handleFileChange" 
+            <label class="block text-sm font-medium text-gray-700 mb-1">Attach Files (Images, PDFs, Docs)</label>
+            <input type="file" ref="fileInput" @change="handleFileChange" multiple
                 accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.txt" 
                 class="block w-full text-sm text-gray-500
               file:mr-4 file:py-2 file:px-4
@@ -61,12 +61,33 @@
               hover:file:bg-blue-100
             "/>
             
-            <div v-if="imagePreview || selectedFileName" class="mt-2 text-sm text-gray-600">
-                <p v-if="selectedFileName" class="mb-1 font-medium">Selected: {{ selectedFileName }}</p>
-                <img v-if="imagePreview" :src="imagePreview" class="h-32 rounded-lg object-cover" />
-                <div v-else-if="selectedFileName" class="p-4 bg-gray-100 rounded-lg flex items-center gap-2">
-                    <ion-icon :icon="documentAttachOutline" class="text-2xl"></ion-icon>
-                    <span>Document attached</span>
+            <!-- Selected Files List -->
+            <div v-if="selectedFiles.length > 0" class="mt-3 space-y-2">
+                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Selected Files ({{ selectedFiles.length }})</p>
+                
+                <div v-for="(file, index) in selectedFiles" :key="index" class="relative group p-2 bg-gray-50 rounded-lg border border-gray-200 flex items-center gap-3">
+                    
+                    <!-- Preview Icon/Image -->
+                    <div class="h-10 w-10 flex-shrink-0 bg-gray-200 rounded overflow-hidden flex items-center justify-center">
+                        <img v-if="file.type.startsWith('image/')" :src="getFilePreview(file)" class="w-full h-full object-cover" />
+                        <ion-icon v-else :icon="documentAttachOutline" class="text-xl text-gray-500"></ion-icon>
+                    </div>
+
+                    <!-- File Info -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-700 truncate" :title="file.name">{{ file.name }}</p>
+                        <p class="text-xs text-gray-500">{{ (file.size / 1024).toFixed(1) }} KB</p>
+                    </div>
+
+                    <!-- Remove Button -->
+                    <button 
+                        @click="removeFile(index)" 
+                        type="button"
+                        class="text-gray-400 hover:text-red-500 transition-colors p-1"
+                        title="Remove"
+                    >
+                        <ion-icon :icon="closeOutline" class="text-xl"></ion-icon>
+                    </button>
                 </div>
             </div>
         </div>
@@ -100,7 +121,7 @@ import {
     IonCheckbox, IonDatetime, IonDatetimeButton, IonSpinner, toastController,
     IonIcon
 } from '@ionic/vue';
-import { documentAttachOutline } from 'ionicons/icons';
+import { documentAttachOutline, closeOutline } from 'ionicons/icons';
 import { useAuthStore } from '@/stores/auth';
 import { useAnnouncementStore } from '@/stores/announcements';
 import api from '@/services/api';
@@ -121,12 +142,11 @@ const form = ref({
     department_ids: [] as number[],
     user_ids: [],
     expires_at: null,
-    image: null as File | null
+    attachments: [] as File[]
 });
 
 const accessibleDepartments = ref<any[]>([]);
-const imagePreview = ref<string | null>(null);
-const selectedFileName = ref<string | null>(null);
+const selectedFiles = ref<File[]>([]); // To track files for UI
 const loading = ref(false);
 
 const canBroadcastUniversal = computed(() => {
@@ -139,16 +159,6 @@ onMounted(async () => {
 });
 
 async function loadDepartments() {
-    // We need to fetch departments the user can access.
-    // Ideally user object has this, or we fetch from an endpoint.
-    // For now, let's look at authStore.user.departments (assigned) + primary department
-    // But backend logic says "getAccessibleDepartmentIds".
-    // Let's use the Metadata endpoint but filter or just fetch all if superadmin.
-    
-    // Quick fix: Fetch all departments and filter if not superadmin? 
-    // Or better: Let the backend provide "my-departments".
-    // Since we don't have a specific endpoint, let's use what we have in AuthStore or fetch all.
-    
     try {
         const response = await api.get('/departments');
         const allDepts = response.data;
@@ -156,21 +166,11 @@ async function loadDepartments() {
         if (authStore.user?.roles?.some((r: any) => r.slug === 'superadmin')) {
             accessibleDepartments.value = allDepts;
         } else {
-             // Filter based on user's authorized departments
-             // This logic mimics the backend verify
              const myDeptIds = new Set<number>();
              if (authStore.user?.department_id) myDeptIds.add(authStore.user.department_id);
-             
              authStore.user?.departments?.forEach((d: any) => myDeptIds.add(d.id));
              
-             // Also temp departments? Metadata might be outdated.
-             // Simplest: Just show all if Department Admin.
-             if (authStore.user?.roles?.some((r: any) => r.slug === 'department_admin')) {
-                  // Actually, department admin should only see their own.
-                  accessibleDepartments.value = allDepts.filter((d: any) => myDeptIds.has(d.id));
-             } else {
-                  accessibleDepartments.value = allDepts.filter((d: any) => myDeptIds.has(d.id));
-             }
+             accessibleDepartments.value = allDepts.filter((d: any) => myDeptIds.has(d.id));
         }
     } catch (e) {
         console.error('Failed to load departments', e);
@@ -190,18 +190,26 @@ function toggleDepartment(id: number) {
     }
 }
 
+const fileInput = ref<HTMLInputElement | null>(null);
+
 function handleFileChange(event: any) {
-    const file = event.target.files[0];
-    if (file) {
-        form.value.image = file;
-        selectedFileName.value = file.name;
-        
-        if (file.type.startsWith('image/')) {
-            imagePreview.value = URL.createObjectURL(file);
-        } else {
-            imagePreview.value = null;
-        }
+    const files = Array.from(event.target.files) as File[];
+    if (files.length > 0) {
+        // Append new files to existing selection
+        selectedFiles.value = [...selectedFiles.value, ...files];
+        form.value.attachments = selectedFiles.value;
     }
+    // Clear input so same files can be selected again if needed (though we handle this via array)
+    if (event.target) event.target.value = ''; 
+}
+
+function removeFile(index: number) {
+    selectedFiles.value.splice(index, 1);
+    form.value.attachments = selectedFiles.value;
+}
+
+function getFilePreview(file: File) {
+    return URL.createObjectURL(file);
 }
 
 async function submit() {
@@ -232,7 +240,11 @@ async function submit() {
         formData.append('content', form.value.content);
         formData.append('type', form.value.type);
         if (form.value.expires_at) formData.append('expires_at', form.value.expires_at);
-        if (form.value.image) formData.append('image', form.value.image);
+        
+        // Append all attachments
+        form.value.attachments.forEach((file) => {
+            formData.append('attachments[]', file);
+        });
         
         form.value.department_ids.forEach(id => formData.append('department_ids[]', id.toString()));
 
@@ -255,9 +267,9 @@ async function submit() {
             department_ids: [],
             user_ids: [],
             expires_at: null,
-            image: null
+            attachments: []
         };
-        imagePreview.value = null;
+        selectedFiles.value = [];
 
     } catch (error: any) {
         const toast = await toastController.create({

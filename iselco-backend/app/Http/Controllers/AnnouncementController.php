@@ -37,7 +37,8 @@ class AnnouncementController extends Controller
                     'created_at' => $announcement->created_at,
                     'creator' => $announcement->creator->employee_name ?? $announcement->creator->username,
                     'departments' => $announcement->departments->pluck('name'),
-                    'is_read' => $isRead
+                    'is_read' => $isRead,
+                    'attachments' => $announcement->attachments // Include attachments
                 ];
             });
 
@@ -50,7 +51,7 @@ class AnnouncementController extends Controller
     public function history()
     {
         $announcements = Announcement::where('created_by', auth()->id())
-            ->with('departments')
+            ->with(['departments', 'attachments']) // Ensure attachments are loaded
             ->latest()
             ->paginate(10);
 
@@ -62,11 +63,14 @@ class AnnouncementController extends Controller
      */
     public function store(Request $request)
     {
+        // ... (validation stays same) ...
         $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'type' => 'required|in:all,department,selected_users',
-            'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx,xls,xlsx,ppt,pptx,zip,txt|max:10240', // 10MB max, diverse types
+            'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx,xls,xlsx,ppt,pptx,zip,txt|max:10240',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx,xls,xlsx,ppt,pptx,zip,txt|max:10240',
             'department_ids' => 'required_if:type,department|array',
             'user_ids' => 'required_if:type,selected_users|array',
             'expires_at' => 'nullable|date|after:now',
@@ -103,7 +107,7 @@ class AnnouncementController extends Controller
         try {
             DB::beginTransaction();
 
-            // Handle Image Upload
+            // Handle Single Image (Legacy)
             $imagePath = null;
             if ($request->hasFile('image')) {
                 $imagePath = $request->file('image')->store('announcements', 'public');
@@ -118,6 +122,31 @@ class AnnouncementController extends Controller
                 'expires_at' => $request->expires_at
             ]);
 
+            // Handle Multiple Attachments
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    $path = $file->store('announcements', 'public');
+                    $announcement->attachments()->create([
+                        'file_path' => $path,
+                        'file_name' => $file->getClientOriginalName(),
+                        'file_type' => $file->getClientMimeType(),
+                        'file_size' => $file->getSize(),
+                    ]);
+                }
+            }
+            
+            // If single image was uploaded, also add it to attachments so it appears in the gallery
+            if ($request->hasFile('image')) {
+                 $file = $request->file('image');
+                 // We already stored it above in $imagePath
+                 $announcement->attachments()->create([
+                    'file_path' => $imagePath,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_type' => $file->getClientMimeType(),
+                    'file_size' => $file->getSize(),
+                ]);
+            }
+
             // Sync Relationships
             if ($request->type === 'department') {
                 $announcement->departments()->sync($request->department_ids);
@@ -129,7 +158,7 @@ class AnnouncementController extends Controller
 
             return response()->json([
                 'message' => 'Announcement broadcasted successfully',
-                'data' => $announcement
+                'data' => $announcement->load('attachments')
             ], 201);
 
         } catch (\Exception $e) {

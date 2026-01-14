@@ -23,6 +23,8 @@ class Announcement extends Model
         'expires_at' => 'datetime',
     ];
 
+    protected $with = ['attachments', 'creator'];
+
     protected $appends = ['image_url'];
 
     public function getImageUrlAttribute()
@@ -51,6 +53,11 @@ class Announcement extends Model
     {
         return $this->belongsToMany(User::class, 'announcement_reads')
             ->withPivot('read_at');
+    }
+
+    public function attachments()
+    {
+        return $this->hasMany(AnnouncementAttachment::class);
     }
 
     // Scopes
