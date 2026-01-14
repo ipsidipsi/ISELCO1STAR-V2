@@ -50,17 +50,25 @@
 
         <!-- Image Upload -->
         <div class="px-4 mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Attach Image (Optional)</label>
-            <input type="file" @change="handleFileChange" accept="image/*" class="block w-full text-sm text-gray-500
+            <label class="block text-sm font-medium text-gray-700 mb-1">Attach File (Image, PDF, Doc)</label>
+            <input type="file" @change="handleFileChange" 
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.txt" 
+                class="block w-full text-sm text-gray-500
               file:mr-4 file:py-2 file:px-4
               file:rounded-full file:border-0
               file:text-sm file:font-semibold
               file:bg-blue-50 file:text-blue-700
               hover:file:bg-blue-100
             "/>
-            <p v-if="imagePreview" class="mt-2">
-                <img :src="imagePreview" class="h-32 rounded-lg object-cover" />
-            </p>
+            
+            <div v-if="imagePreview || selectedFileName" class="mt-2 text-sm text-gray-600">
+                <p v-if="selectedFileName" class="mb-1 font-medium">Selected: {{ selectedFileName }}</p>
+                <img v-if="imagePreview" :src="imagePreview" class="h-32 rounded-lg object-cover" />
+                <div v-else-if="selectedFileName" class="p-4 bg-gray-100 rounded-lg flex items-center gap-2">
+                    <ion-icon :icon="documentAttachOutline" class="text-2xl"></ion-icon>
+                    <span>Document attached</span>
+                </div>
+            </div>
         </div>
         
         <!-- Expiry (Optional) -->
@@ -89,8 +97,10 @@ import { ref, computed, onMounted } from 'vue';
 import { 
     IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonContent,
     IonItem, IonLabel, IonInput, IonTextarea, IonSelect, IonSelectOption,
-    IonCheckbox, IonDatetime, IonDatetimeButton, IonSpinner, toastController
+    IonCheckbox, IonDatetime, IonDatetimeButton, IonSpinner, toastController,
+    IonIcon
 } from '@ionic/vue';
+import { documentAttachOutline } from 'ionicons/icons';
 import { useAuthStore } from '@/stores/auth';
 import { useAnnouncementStore } from '@/stores/announcements';
 import api from '@/services/api';
@@ -116,6 +126,7 @@ const form = ref({
 
 const accessibleDepartments = ref<any[]>([]);
 const imagePreview = ref<string | null>(null);
+const selectedFileName = ref<string | null>(null);
 const loading = ref(false);
 
 const canBroadcastUniversal = computed(() => {
@@ -183,7 +194,13 @@ function handleFileChange(event: any) {
     const file = event.target.files[0];
     if (file) {
         form.value.image = file;
-        imagePreview.value = URL.createObjectURL(file);
+        selectedFileName.value = file.name;
+        
+        if (file.type.startsWith('image/')) {
+            imagePreview.value = URL.createObjectURL(file);
+        } else {
+            imagePreview.value = null;
+        }
     }
 }
 

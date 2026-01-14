@@ -23,6 +23,13 @@ class Announcement extends Model
         'expires_at' => 'datetime',
     ];
 
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute()
+    {
+        return $this->image_path ? asset(\Illuminate\Support\Facades\Storage::url($this->image_path)) : null;
+    }
+
     // Relationships
 
     public function creator()

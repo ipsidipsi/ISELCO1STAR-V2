@@ -42,6 +42,14 @@
                     {{ dept.name }}
                 </span>
             </div>
+            
+            <!-- Attachment Link -->
+            <div v-if="item.image_url" class="mt-2">
+                 <a :href="item.image_url" target="_blank" class="inline-flex items-center gap-1 text-blue-600 text-xs px-2 py-1 bg-blue-50 rounded hover:bg-blue-100">
+                    <ion-icon :icon="isImage(item.image_url) ? imageOutline : documentAttachOutline"></ion-icon>
+                    <span>{{ isImage(item.image_url) ? 'View Image' : 'Download Attachment' }} ({{ getExtension(item.image_url) }})</span>
+                 </a>
+            </div>
           </ion-label>
         </ion-item>
       </ion-list>
@@ -56,7 +64,7 @@ import {
     IonList, IonItem, IonLabel, IonIcon, IonBadge, IonRefresher, IonRefresherContent,
     IonSpinner
 } from '@ionic/vue';
-import { megaphoneOutline } from 'ionicons/icons';
+import { megaphoneOutline, documentAttachOutline, imageOutline } from 'ionicons/icons';
 import { useAnnouncementStore } from '@/stores/announcements';
 
 const props = defineProps<{ isOpen: boolean }>();
@@ -75,5 +83,16 @@ watch(() => props.isOpen, (newVal) => {
 async function handleRefresh(event: any) {
     await store.fetchHistory();
     event.target.complete();
+}
+
+function isImage(url: string) {
+    if (!url) return false;
+    const extension = url.split('.').pop()?.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(extension || '');
+}
+
+function getExtension(url: string) {
+    if (!url) return '';
+    return url.split('.').pop()?.toLowerCase().substring(0, 4);
 }
 </script>

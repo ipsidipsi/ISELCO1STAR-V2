@@ -66,7 +66,7 @@ class AnnouncementController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'type' => 'required|in:all,department,selected_users',
-            'image' => 'nullable|image|max:5120', // 5MB max
+            'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx,xls,xlsx,ppt,pptx,zip,txt|max:10240', // 10MB max, diverse types
             'department_ids' => 'required_if:type,department|array',
             'user_ids' => 'required_if:type,selected_users|array',
             'expires_at' => 'nullable|date|after:now',

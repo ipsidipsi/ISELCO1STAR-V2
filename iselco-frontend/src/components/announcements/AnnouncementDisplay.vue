@@ -14,26 +14,61 @@
         <ion-icon :icon="closeOutline" class="text-xl"></ion-icon>
       </button>
 
-      <div class="p-4 flex gap-4">
-        <!-- Optional Image -->
-        <div v-if="announcement.image_url" class="flex-shrink-0">
-            <img :src="announcement.image_url" class="w-16 h-16 object-cover rounded-lg cursor-pointer" @click="viewImage(announcement.image_url)">
+      <div class="p-4">
+        <!-- Header: Title, Badges, Close -->
+        <div class="flex justify-between items-start mb-2 pr-6">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700" v-if="announcement.type === 'all'">Universal</span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700" v-else>Department</span>
+                    
+                    <span class="text-xs text-gray-500">
+                        {{ new Date(announcement.created_at).toLocaleDateString() }}
+                    </span>
+                </div>
+                <h3 class="font-bold text-lg text-gray-900 dark:text-white">{{ announcement.title }}</h3>
+            </div>
         </div>
 
-        <div class="flex-1 pr-6">
-            <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700" v-if="announcement.type === 'all'">Universal</span>
-                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700" v-else>Department</span>
-                
-                <span class="text-xs text-gray-500">
-                    {{ new Date(announcement.created_at).toLocaleDateString() }}
-                </span>
+        <!-- Content -->
+        <p class="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap mb-4">{{ announcement.content }}</p>
+
+        <!-- Media/Attachment -->
+        <div v-if="announcement.image_url" class="mb-3">
+            <!-- Image (Facebook Style: Large, Full Width) -->
+            <div 
+                v-if="isImage(announcement.image_url)" 
+                class="w-full rounded-lg overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer"
+                @click="viewImage(announcement.image_url)"
+            >
+                <img 
+                    :src="getFullUrl(announcement.image_url)" 
+                    class="w-full h-auto max-h-96 object-contain hover:opacity-95 transition-opacity" 
+                >
             </div>
             
-            <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-1">{{ announcement.title }}</h3>
-            <p class="text-gray-600 dark:text-gray-300 text-sm whitespace-pre-wrap">{{ announcement.content }}</p>
-            
-            <p class="text-xs text-gray-400 mt-2">Posted by: {{ announcement.creator }}</p>
+            <!-- Document/File (Attachment Style) -->
+            <a 
+                v-else 
+                :href="getFullUrl(announcement.image_url)" 
+                target="_blank"
+                class="flex items-center p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors group"
+                download
+            >
+                <div class="w-10 h-10 flex items-center justify-center bg-blue-100 text-blue-600 rounded-lg mr-3 group-hover:bg-blue-200">
+                    <ion-icon :icon="documentAttachOutline" class="text-xl"></ion-icon>
+                </div>
+                <div class="flex-1">
+                     <p class="text-sm font-medium text-gray-900 dark:text-gray-800">Download Attachment</p>
+                     <p class="text-xs text-gray-500 uppercase">{{ getExtension(announcement.image_url) }} FILE</p>
+                </div>
+                <ion-icon :icon="downloadOutline" class="text-gray-400"></ion-icon>
+            </a>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-xs text-gray-400 border-t pt-2 mt-2">
+            Posted by: <span class="font-medium text-gray-500">{{ announcement.creator?.employee_name || announcement.creator?.username || 'System' }}</span>
         </div>
       </div>
     </div>
@@ -58,7 +93,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useAnnouncementStore } from '@/stores/announcements';
 import { IonIcon, IonModal, IonHeader, IonToolbar, IonButtons, IonButton } from '@ionic/vue';
-import { closeOutline } from 'ionicons/icons';
+import { closeOutline, documentAttachOutline, downloadOutline } from 'ionicons/icons';
 
 const store = useAnnouncementStore();
 
@@ -79,7 +114,31 @@ async function dismiss(id: number) {
     isMarkingRead.value = null;
 }
 
+// Helper to ensure full URL
+function getFullUrl(url: string) {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    
+    // Prepend API URL (remove /api suffix if present)
+    const baseUrl = import.meta.env.VITE_API_URL || '';
+    const cleanBase = baseUrl.endsWith('/api') ? baseUrl.slice(0, -4) : baseUrl;
+    
+    return `${cleanBase}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 function viewImage(url: string) {
-    selectedImage.value = url;
+    selectedImage.value = getFullUrl(url);
+}
+
+function isImage(url: string) {
+    if (!url) return false;
+    const cleanUrl = url.split('?')[0];
+    const extension = cleanUrl.split('.').pop()?.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(extension || '');
+}
+
+function getExtension(url: string) {
+    if (!url) return '';
+    return url.split('.').pop()?.toLowerCase().substring(0, 4);
 }
 </script>

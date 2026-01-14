@@ -7,6 +7,7 @@
 
 <script setup lang="ts">
 import { IonApp, IonRouterOutlet } from '@ionic/vue';
+import NotificationContainer from '@/components/NotificationContainer.vue';
 import { useNotificationStore } from '@/stores/notifications';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
