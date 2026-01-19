@@ -14,6 +14,8 @@ export interface User {
     must_change_password: boolean
     roles: any[]
     department?: any
+    permissions?: any[]
+    departments?: any[]
 }
 
 export const useAuthStore = defineStore('auth', () => {

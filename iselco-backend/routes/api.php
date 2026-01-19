@@ -15,6 +15,15 @@ use Illuminate\Support\Facades\Route;
 // PUBLIC ROUTES (No authentication required)
 //============================================================
 
+Route::get('/ping', function() {
+    return response()->json([
+        'message' => 'PONG',
+        'status' => 'OK',
+        'time' => now()->toDateTimeString(),
+        'origin_header' => request()->header('Origin') ?? 'None'
+    ]);
+});
+
 // Authentication
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);

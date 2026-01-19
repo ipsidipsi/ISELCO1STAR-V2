@@ -20,7 +20,7 @@
         <!-- Content -->
         <ion-item>
           <ion-label position="stacked">Message *</ion-label>
-          <ion-textarea v-model="form.content" rows="4" placeholder="Write your announcement here..."></ion-textarea>
+          <ion-textarea v-model="form.content" :rows="4" placeholder="Write your announcement here..."></ion-textarea>
         </ion-item>
 
         <!-- Target Audience -->

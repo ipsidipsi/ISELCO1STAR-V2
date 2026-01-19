@@ -24,6 +24,9 @@ class SuperadminSeeder extends Seeder
      */
     public function run(): void
     {
+        // Get ETSD Department
+        $etsd = \App\Models\Department::where('code', 'ETSD')->first();
+
         // Create superadmin user
         $superadmin = User::create([
             'username' => 'admin',
@@ -31,7 +34,7 @@ class SuperadminSeeder extends Seeder
             'employee_name' => 'System Administrator',
             'mobile_number' => null, // Can be set later
             'empbadge_number' => 'ADMIN001',
-            'department_id' => null, // Not tied to specific department
+            'department_id' => $etsd?->id, // Assign to ETSD
             'is_active' => true,
             'must_change_password' => false, // No need to change immediately for dev
         ]);

@@ -62,6 +62,14 @@ class DepartmentSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'name' => 'ETSD',
+                'code' => 'ETSD',
+                'is_active' => true,
+                'synced_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ];
 
         DB::table('departments')->insert($departments);
