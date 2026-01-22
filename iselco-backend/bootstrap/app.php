@@ -34,6 +34,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
+        
+        // [FIX] Exclude login and forgot-password from CSRF for Mobile/APK compatibility
+        // These routes use Sanctum token auth, not session-based, so CSRF not needed
+        $middleware->validateCsrfTokens(except: [
+            'api/login',
+            'api/forgot-password',
+            'sanctum/csrf-cookie',
+        ]);
     })->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response, \Throwable $exception, Request $request) {
             // Return JSON response for API routes when authentication fails

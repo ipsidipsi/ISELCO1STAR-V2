@@ -199,7 +199,7 @@ return [
     |
     */
 
-    'same_site' => 'lax', // SWITCH TO LAX (Better for Subdomains)
+    'same_site' => 'none', // Changed to 'none' for Ionic PWA/APK compatibility
 
     /*
     |--------------------------------------------------------------------------

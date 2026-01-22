@@ -37,7 +37,7 @@ class FixXsrfCookieDomain
                         true, // Secure
                         false, // HttpOnly (MUST be false for XSRF-TOKEN to be readable by JS)
                         $cookie->isRaw(),
-                        'lax' // SameSite
+                        'none' // SameSite - Changed to 'none' for Mobile/APK compatibility
                     );
                     
                     // Remove old cookie, set new one
