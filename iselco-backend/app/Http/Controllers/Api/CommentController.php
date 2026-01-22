@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Comment;
 use App\Models\Ticket;
+use App\Services\TicketActivityLogger;
 use Illuminate\Http\Request;
 
 /**
@@ -42,20 +43,28 @@ class CommentController extends Controller
         $ticket = Ticket::findOrFail($ticketId);
 
         $request->validate([
-            'message' => 'required|string',
+            'message' => 'nullable|string', // Changed to nullable to allow file-only comments
             'is_internal' => 'sometimes|boolean',
         ]);
 
         $comment = Comment::create([
             'ticket_id' => $ticketId,
             'user_id' => $request->user()->id,
-            'message' => $request->message,
+            'message' => $request->message ?: '', // Use empty string if no message
             'is_internal' => $request->is_internal ?? false,
             'read_by' => json_encode([]), // Empty read receipts initially
         ]);
 
         // Load relationships for response
         $comment->load(['user', 'attachments']);
+
+        // Log activity (only if comment has message, not just files)
+        if ($comment->message) {
+            TicketActivityLogger::logComment($ticket, $comment, $request->user());
+        }
+
+        // Broadcast the new comment to other users viewing this ticket
+        broadcast(new \App\Events\CommentCreated($comment, $ticketId));
 
         return response()->json($comment, 201);
     }
@@ -100,6 +109,11 @@ class CommentController extends Controller
         ]);
 
         $comment->update(['message' => $request->message]);
+        
+        $comment->load(['user', 'attachments']);
+
+        // Broadcast the update to other users
+        broadcast(new \App\Events\CommentUpdated($comment, $comment->ticket_id));
 
         return response()->json($comment);
     }
@@ -117,8 +131,14 @@ class CommentController extends Controller
         if ($comment->user_id !== $request->user()->id && !$request->user()->isSuperadmin()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
+        
+        $ticketId = $comment->ticket_id;
+        $commentId = $comment->id;
 
         $comment->delete();
+
+        // Broadcast the deletion to other users
+        broadcast(new \App\Events\CommentDeleted($commentId, $ticketId));
 
         return response()->json(['message' => 'Comment deleted successfully']);
     }

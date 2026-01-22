@@ -75,6 +75,12 @@ class RolePermissionSeeder extends Seeder
             ['name' => 'Manage Permissions', 'slug' => 'permissions.manage', 'description' => 'Can manage permission assignments', 'category' => 'Settings'],
         ];
 
+        // Broadcast Permissions
+        $broadcastPermissions = [
+            ['name' => 'Universal Broadcast', 'slug' => 'broadcast.universal', 'description' => 'Can broadcast messages to ALL users', 'category' => 'Broadcast'],
+            ['name' => 'Create Broadcast', 'slug' => 'broadcast.create', 'description' => 'Can broadcast messages to allowed departments/users', 'category' => 'Broadcast'],
+        ];
+
         // Create all permissions
         $allPermissions = array_merge(
             $ticketPermissions,
@@ -82,7 +88,8 @@ class RolePermissionSeeder extends Seeder
             $departmentPermissions,
             $metadataPermissions,
             $reportPermissions,
-            $settingsPermissions
+            $settingsPermissions,
+            $broadcastPermissions
         );
 
         foreach ($allPermissions as $permissionData) {

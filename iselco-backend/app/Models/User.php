@@ -19,6 +19,8 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasApiTokens, SoftDeletes;
 
+
+
     /**
      * The attributes that are mass assignable.
      *
@@ -38,6 +40,10 @@ class User extends Authenticatable
         'empbadge_number',
         'department_id',
         'is_active',
+        'status',
+        'status_reason',
+        'status_changed_at',
+        'status_changed_by',
         'must_change_password',
         'last_login_at',
     ];
@@ -63,6 +69,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
             'last_login_at' => 'datetime',
+            'status_changed_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -78,6 +85,35 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Role::class, 'role_user')
             ->withTimestamps();
+    }
+
+    /**
+     * Temporary roles assigned to this user (with expiry dates).
+     * 
+     * For "Officer in Charge" scenarios when someone is on leave
+     */
+    public function temporaryRoles()
+    {
+        return $this->belongsToMany(Role::class, 'role_user_temporary')
+            ->withPivot('expires_at', 'assigned_by_user_id', 'reason')
+            ->wherePivot('expires_at', '>', now())
+            ->withTimestamps();
+    }
+
+    /**
+     * All active roles (permanent + non-expired temporary).
+     */
+    public function allActiveRoles()
+    {
+        // Load permanent roles
+        $permanentRoles = $this->roles;
+        
+        // Load temporary roles (automatically filters expired via wherePivot)
+        $this->load('temporaryRoles');
+        $temporaryRoles = $this->temporaryRoles;
+        
+        // Merge and return unique roles
+        return $permanentRoles->merge($temporaryRoles)->unique('id');
     }
 
     /**
@@ -107,20 +143,42 @@ class User extends Authenticatable
 
     /**
      * All departments this user is assigned to (for admins supervising multiple departments).
+     * Includes both permanent and non-expired temporary assignments.
      */
     public function departments()
     {
         return $this->belongsToMany(Department::class, 'department_user')
-            ->withPivot('is_supervisor')
+            ->withPivot('is_supervisor', 'expires_at', 'assigned_by_user_id', 'reason')
             ->withTimestamps();
     }
 
     /**
+     * Get only active department assignments (permanent + non-expired temporary).
+     */
+    public function activeDepartments()
+    {
+        return $this->departments()
+            ->where(function ($query) {
+                $query->whereNull('department_user.expires_at')
+                    ->orWhere('department_user.expires_at', '>', now());
+            });
+    }
+
+    /**
      * Departments where this user is a supervisor.
+     * Includes both permanent and non-expired temporary supervisor assignments.
      */
     public function supervisedDepartments()
     {
-        return $this->departments()->wherePivot('is_supervisor', true);
+        return $this->activeDepartments()->wherePivot('is_supervisor', true);
+    }
+
+    /**
+     * User who last changed this user's status.
+     */
+    public function statusChangedBy()
+    {
+        return $this->belongsTo(User::class, 'status_changed_by');
     }
 
     /**
@@ -155,28 +213,73 @@ class User extends Authenticatable
         return $this->hasMany(Attachment::class, 'uploaded_by_user_id');
     }
 
+    /**
+     * User's notification preferences.
+     */
+    public function notificationPreference()
+    {
+        return $this->hasOne(NotificationPreference::class);
+    }
+
+    /**
+     * Announcements targeted specifically to this user.
+     */
+    public function announcements()
+    {
+        return $this->belongsToMany(Announcement::class, 'announcement_users');
+    }
+
+    /**
+     * Announcements this user has marked as read.
+     */
+    public function readAnnouncements()
+    {
+        return $this->belongsToMany(Announcement::class, 'announcement_reads')
+            ->withPivot('read_at');
+    }
+
     // ==================== RBAC METHODS ====================
 
     /**
      * Check if user has a specific role.
+     * 
+     * Checks both permanent and active temporary roles
      * 
      * @param string $roleSlug Role slug (e.g., 'superadmin', 'department_admin')
      * @return bool
      */
     public function hasRole(string $roleSlug): bool
     {
-        return $this->roles()->where('slug', $roleSlug)->exists();
+        // Check permanent roles
+        $hasPermanent = $this->roles()->where('slug', $roleSlug)->exists();
+        
+        if ($hasPermanent) {
+            return true;
+        }
+        
+        // Check active temporary roles
+        return $this->temporaryRoles()->where('slug', $roleSlug)->exists();
     }
 
     /**
      * Check if user has any of the given roles.
+     * 
+     * Checks both permanent and active temporary roles
      * 
      * @param array $roleSlugs Array of role slugs
      * @return bool
      */
     public function hasAnyRole(array $roleSlugs): bool
     {
-        return $this->roles()->whereIn('slug', $roleSlugs)->exists();
+        // Check permanent roles
+        $hasPermanent = $this->roles()->whereIn('slug', $roleSlugs)->exists();
+        
+        if ($hasPermanent) {
+            return true;
+        }
+        
+        // Check active temporary roles
+        return $this->temporaryRoles()->whereIn('slug', $roleSlugs)->exists();
     }
 
     /**
@@ -227,7 +330,8 @@ class User extends Authenticatable
      * True if:
      * - User is superadmin
      * - User's primary department matches
-     * - User supervises this department
+     * - User supervises this department (permanent or temporary)
+     * - User is assigned to this department (permanent or non-expired temporary)
      * 
      * @param int $departmentId
      * @return bool
@@ -244,10 +348,35 @@ class User extends Authenticatable
             return true;
         }
 
-        // Check if user supervises this department
-        return $this->supervisedDepartments()
+        // Check if user is assigned to this department (including temporary)
+        return $this->activeDepartments()
             ->where('departments.id', $departmentId)
             ->exists();
+    }
+
+    /**
+     * Get all department IDs this user can access.
+     * 
+     * @return array
+     */
+    public function getAccessibleDepartmentIds(): array
+    {
+        if ($this->isSuperadmin()) {
+            return Department::pluck('id')->toArray();
+        }
+
+        $departmentIds = [];
+        
+        // Add primary department
+        if ($this->department_id) {
+            $departmentIds[] = $this->department_id;
+        }
+        
+        // Add assigned departments (permanent + active temporary)
+        $assignedIds = $this->activeDepartments()->pluck('departments.id')->toArray();
+        $departmentIds = array_merge($departmentIds, $assignedIds);
+        
+        return array_unique($departmentIds);
     }
 
     // ==================== ACCESSORS ====================
@@ -280,5 +409,128 @@ class User extends Authenticatable
     public function getFullNameAttribute(): string
     {
         return $this->employee_name ?? $this->username;
+    }
+
+    // ==================== STATUS MANAGEMENT ====================
+
+    /**
+     * Suspend user account (can be reactivated).
+     * 
+     * @param string|null $reason
+     * @param int|null $changedBy
+     * @return void
+     */
+    public function suspend(?string $reason = null, ?int $changedBy = null): void
+    {
+        $this->update([
+            'status' => 'suspended',
+            'is_active' => false,
+            'status_reason' => $reason,
+            'status_changed_at' => now(),
+            'status_changed_by' => $changedBy ?? auth()->id(),
+        ]);
+    }
+
+    /**
+     * Mark user as on leave.
+     * 
+     * @param string|null $reason
+     * @param int|null $changedBy
+     * @return void
+     */
+    public function markOnLeave(?string $reason = null, ?int $changedBy = null): void
+    {
+        $this->update([
+            'status' => 'on_leave',
+            'is_active' => false,
+            'status_reason' => $reason,
+            'status_changed_at' => now(),
+            'status_changed_by' => $changedBy ?? auth()->id(),
+        ]);
+    }
+
+    /**
+     * Retire user (soft delete).
+     * 
+     * @param string|null $reason
+     * @param int|null $changedBy
+     * @return void
+     */
+    public function retire(?string $reason = null, ?int $changedBy = null): void
+    {
+        $this->update([
+            'status' => 'retired',
+            'is_active' => false,
+            'status_reason' => $reason ?? 'Employee retired',
+            'status_changed_at' => now(),
+            'status_changed_by' => $changedBy ?? auth()->id(),
+        ]);
+
+        // Soft delete the user
+        $this->delete();
+    }
+
+    /**
+     * Terminate user employment (soft delete).
+     * 
+     * @param string|null $reason
+     * @param int|null $changedBy
+     * @return void
+     */
+    public function terminate(?string $reason = null, ?int $changedBy = null): void
+    {
+        $this->update([
+            'status' => 'terminated',
+            'is_active' => false,
+            'status_reason' => $reason ?? 'Employment terminated',
+            'status_changed_at' => now(),
+            'status_changed_by' => $changedBy ?? auth()->id(),
+        ]);
+
+        // Soft delete the user
+        $this->delete();
+    }
+
+    /**
+     * Reactivate user account.
+     * 
+     * @param string|null $reason
+     * @param int|null $changedBy
+     * @return void
+     */
+    public function reactivate(?string $reason = null, ?int $changedBy = null): void
+    {
+        // Restore if soft deleted
+        if ($this->trashed()) {
+            $this->restore();
+        }
+
+        $this->update([
+            'status' => 'active',
+            'is_active' => true,
+            'status_reason' => $reason,
+            'status_changed_at' => now(),
+            'status_changed_by' => $changedBy ?? auth()->id(),
+        ]);
+    }
+
+    /**
+     * Check if user is currently employable (active or on leave).
+     * 
+     * @return bool
+     */
+    public function isEmployable(): bool
+    {
+        return in_array($this->status, ['active', 'on_leave']);
+    }
+
+    /**
+     * Check if user is permanently separated (retired or terminated).
+     * 
+     * @return bool
+     */
+    public function isPermanentlySeparated(): bool
+    {
+        return in_array($this->status, ['retired', 'terminated']);
     }
 }
