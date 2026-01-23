@@ -15,18 +15,26 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'broadcasting/auth', 'sanctum/csrf-cookie', 'debug-*'],
+    'paths' => ['api/*', 'broadcasting/auth', 'sanctum/csrf-cookie', 'api/sanctum/csrf-cookie', 'debug-*'],
 
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
+        'http://localhost',
+        'https://localhost',           // Capacitor with https scheme
         'http://localhost:5173',
         'http://localhost:3000',
         'https://star.iselcouno.com',
         'https://apistar.iselcouno.com', // Self
+        'capacitor://localhost',  // Capacitor Android/iOS
+        'ionic://localhost',      // Ionic WebView
+        'http://localhost:8100',  // Ionic serve
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '/^capacitor:\/\/.*/',    // Any capacitor origin
+        '/^https?:\/\/localhost(:.*)?$/', // Any localhost (http or https, any port)
+    ],
 
     'allowed_headers' => ['*'],
 

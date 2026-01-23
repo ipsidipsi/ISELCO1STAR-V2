@@ -41,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/login',
             'api/forgot-password',
             'sanctum/csrf-cookie',
+            'broadcasting/auth', // Echo/Reverb authorization
         ]);
     })->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response, \Throwable $exception, Request $request) {
