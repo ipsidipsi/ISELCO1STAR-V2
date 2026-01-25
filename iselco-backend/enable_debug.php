@@ -1,0 +1,40 @@
+<?php
+$content = <<<'ENV'
+APP_NAME="ISELCO STAR"
+APP_ENV=production
+APP_KEY=base64:/1sKmgoXruwT3iTw2mJSSXPHjM7FS/ubPam48qtSbxM=
+APP_DEBUG=true
+APP_URL=https://apistar.iselcouno.com
+FRONTEND_URL=https://star.iselcouno.com
+APP_LOCALE=en
+APP_FALLBACK_LOCALE=en
+APP_FAKER_LOCALE=en_US
+APP_TIMEZONE=Asia/Manila
+
+BROADCAST_CONNECTION=reverb
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=iselco_star
+DB_USERNAME=root
+DB_PASSWORD=
+
+REVERB_APP_ID=790150
+REVERB_APP_KEY=2pyxx95sxlltnenisasa
+REVERB_APP_SECRET=ccrfxbr8pzhsje2yl23l
+REVERB_HOST="apistar.iselcouno.com"
+REVERB_PORT=443
+REVERB_SCHEME=https
+
+PUSHER_APP_ID="${REVERB_APP_ID}"
+PUSHER_APP_KEY="${REVERB_APP_KEY}"
+PUSHER_APP_SECRET="${REVERB_APP_SECRET}"
+PUSHER_HOST="${REVERB_HOST}"
+PUSHER_PORT="${REVERB_PORT}"
+PUSHER_SCHEME="${REVERB_SCHEME}"
+PUSHER_APP_CLUSTER="mt1"
+ENV;
+
+file_put_contents(__DIR__ . '/.env', $content);
+echo "ENV updated: DEBUG MODE ON.\n";

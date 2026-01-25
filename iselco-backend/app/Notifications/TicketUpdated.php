@@ -10,7 +10,7 @@ use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Notifications\Notification;
 
-class TicketUpdated extends Notification implements ShouldBroadcastNow
+class TicketUpdated extends Notification
 {
     // Removed Queueable trait to ensure immediate broadcast without queue interference
 
@@ -37,7 +37,7 @@ class TicketUpdated extends Notification implements ShouldBroadcastNow
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database'];
     }
 
     /**
