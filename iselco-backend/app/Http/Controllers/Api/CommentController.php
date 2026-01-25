@@ -60,11 +60,19 @@ class CommentController extends Controller
 
         // Log activity (only if comment has message, not just files)
         if ($comment->message) {
-            TicketActivityLogger::logComment($ticket, $comment, $request->user());
+            try {
+                TicketActivityLogger::logComment($ticket, $comment, $request->user());
+            } catch (\Exception $e) {
+                \Log::error('Failed to log comment activity (broadcast error?): ' . $e->getMessage());
+            }
         }
 
         // Broadcast the new comment to other users viewing this ticket
-        broadcast(new \App\Events\CommentCreated($comment, $ticketId));
+        try {
+            broadcast(new \App\Events\CommentCreated($comment, $ticketId));
+        } catch (\Exception $e) {
+            \Log::error('Failed to broadcast comment creation: ' . $e->getMessage());
+        }
 
         return response()->json($comment, 201);
     }
