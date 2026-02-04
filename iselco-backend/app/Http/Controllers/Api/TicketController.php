@@ -235,39 +235,7 @@ class TicketController extends Controller
             DB::commit();
 
             // Sync to TrackIt (Internal Maintenance System)
-            // Filter: Only send tickets for ETSD Department
-            try {
-                // Ensure department is loaded for check
-                if (!$ticket->relationLoaded('department')) {
-                    $ticket->load('department');
-                }
-                if (!$ticket->relationLoaded('category')) {
-                    $ticket->load('category');
-                }
-                if (!$ticket->relationLoaded('requestor')) {
-                    $ticket->load('requestor');
-                }
-
-                $deptCode = strtoupper($ticket->department->code ?? '');
-                $deptName = strtoupper($ticket->department->name ?? '');
-
-                if ($deptCode === 'ETSD' || $deptName === 'ETSD') {
-                     // Targeting TrackIt Local via Radmin VPN (26.217.15.139:8000)
-                    \Illuminate\Support\Facades\Http::post('http://26.217.15.139:8000/api/webhooks/iselco-star/tickets', [
-                        'id' => $ticket->id,
-                        'ticket_number' => $ticket->ticket_number,
-                        'title' => $ticket->title,
-                        'description' => $ticket->description,
-                        'status' => $ticket->status,
-                        'priority_id' => $ticket->priority_id,
-                        'requestor_id' => $ticket->requestor_id,
-                        'category_name' => $ticket->category->name ?? 'Uncategorized',
-                        'requestor_name' => $ticket->requestor->employee_name ?? $ticket->requestor->username ?? 'Unknown',
-                    ]);
-                }
-            } catch (\Exception $e) {
-                \Log::error('TrackIt Sync Failed: ' . $e->getMessage());
-            }
+            $this->syncToTrackIt($ticket);
 
             // Load relationships for response
             $ticket->load(['priority', 'category', 'department', 'requestor', 'assignedTo']);
@@ -358,6 +326,9 @@ class TicketController extends Controller
             TicketActivityLogger::logAssigned($ticket, $user, $user);
 
             DB::commit();
+
+            // Sync to TrackIt
+            $this->syncToTrackIt($ticket);
 
             return response()->json(['message' => 'Ticket accepted', 'ticket' => $ticket]);
 
@@ -724,6 +695,45 @@ class TicketController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Failed to reset password: ' . $e->getMessage()], 500);
+        }
+    }
+    /**
+     * Helper: Sync to TrackIt
+     */
+    private function syncToTrackIt(Ticket $ticket)
+    {
+        try {
+            // Ensure department is loaded for check
+            if (!$ticket->relationLoaded('department')) {
+                $ticket->load('department');
+            }
+            if (!$ticket->relationLoaded('category')) {
+                $ticket->load('category');
+            }
+            if (!$ticket->relationLoaded('requestor')) {
+                $ticket->load('requestor');
+            }
+
+            $deptCode = strtoupper($ticket->department->code ?? '');
+            $deptName = strtoupper($ticket->department->name ?? '');
+
+            if ($deptCode === 'ETSD' || $deptName === 'ETSD') {
+                 // Targeting TrackIt Local via Radmin VPN (26.217.15.139:8000)
+                \Illuminate\Support\Facades\Http::timeout(2)->post('http://26.217.15.139:8000/api/webhooks/iselco-star/tickets', [
+                    'id' => $ticket->id,
+                    'ticket_number' => $ticket->ticket_number,
+                    'title' => $ticket->title,
+                    'description' => $ticket->description,
+                    'status' => $ticket->status,
+                    'priority_id' => $ticket->priority_id,
+                    'requestor_id' => $ticket->requestor_id,
+                    'category_name' => $ticket->category->name ?? 'Uncategorized',
+                    'requestor_name' => $ticket->requestor->employee_name ?? $ticket->requestor->username ?? 'Unknown',
+                    'assignee_id' => $ticket->assigned_to_id, // Added Assignee ID
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('TrackIt Sync Failed: ' . $e->getMessage());
         }
     }
 }

@@ -24,6 +24,11 @@ Route::get('/ping', function() {
     ]);
 });
 
+// Integration Webhooks (TrackIt -> Star)
+Route::post('/webhooks/trackit/status', [App\Http\Controllers\Api\TrackItWebhookController::class, 'updateStatus']);
+Route::get('/webhooks/trackit/users', [App\Http\Controllers\Api\TrackItWebhookController::class, 'getEtsdUsers']); // Sync Users
+Route::post('/webhooks/trackit/auth', [App\Http\Controllers\Api\TrackItWebhookController::class, 'verifyCredentials']); // Pass-through Auth
+
 // Authentication
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
