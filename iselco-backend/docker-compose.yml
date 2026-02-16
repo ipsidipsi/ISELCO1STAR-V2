@@ -1,0 +1,107 @@
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: iselco-backend
+        container_name: iselco-app
+        restart: unless-stopped
+        working_dir: /var/www
+        environment:
+            DB_HOST: db
+            REDIS_HOST: redis
+            BROADCAST_CONNECTION: reverb
+        volumes:
+            - .:/var/www
+        networks:
+            - iselco-network
+
+    web:
+        image: nginx:alpine
+        container_name: iselco-web
+        restart: unless-stopped
+        ports:
+            - "8000:80"
+        volumes:
+            - .:/var/www
+            - ./docker/nginx/conf.d:/etc/nginx/conf.d
+        networks:
+            - iselco-network
+        depends_on: 
+            - app
+
+    db:
+        image: mysql:8.0
+        container_name: iselco-db
+        restart: unless-stopped
+        environment:
+            MYSQL_DATABASE: ${DB_DATABASE}
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+            MYSQL_USER: ${DB_USERNAME}
+            SERVICE_TAGS: dev
+            SERVICE_NAME: mysql
+        volumes:
+            - dbdata:/var/lib/mysql
+        networks:
+            - iselco-network
+        ports:
+            - "3306:3306"
+
+    redis:
+        image: redis:alpine
+        container_name: iselco-redis
+        restart: unless-stopped
+        networks:
+            - iselco-network
+        ports:
+            - "6379:6379"
+
+    queue:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: iselco-queue
+        restart: unless-stopped
+        working_dir: /var/www
+        command: "php artisan queue:work --tries=3 --timeout=90"
+        environment:
+            DB_HOST: db
+            REDIS_HOST: redis
+        volumes:
+            - .:/var/www
+        networks:
+            - iselco-network
+        depends_on:
+            - app
+            - db
+            - redis
+
+    reverb:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: iselco-reverb
+        restart: unless-stopped
+        working_dir: /var/www
+        command: "php artisan reverb:start --host=0.0.0.0 --port=8080"
+        environment:
+            DB_HOST: db
+            REDIS_HOST: redis
+        volumes:
+            - .:/var/www
+        networks:
+            - iselco-network
+        ports:
+            - "8080:8080"
+        depends_on:
+            - app
+            - redis
+
+networks:
+    iselco-network:
+        driver: bridge
+
+volumes:
+    dbdata:
+        driver: local
